@@ -5,24 +5,13 @@ import './Services.css';
 
 function Services() {
   const [content, setContent] = useState(null);
+  const [selectedService, setSelectedService] = useState(null);
 
   useEffect(() => {
-    const loadContent = async () => {
-      try {
-        const data = await initializeContent();
-        setContent(data);
-        if (data?.services?.length > 0) {
-          setActiveService(data.services[0]);
-        }
-      } catch (error) {
-        console.error('Error loading content:', error);
-      }
-    };
-
-    loadContent();
+    initializeContent().then(data => setContent(data));
 
     const handleStorageChange = () => {
-      loadContent();
+      initializeContent().then(data => setContent(data));
     };
 
     window.addEventListener('contentUpdate', handleStorageChange);
@@ -89,10 +78,6 @@ function Services() {
 
   const { services } = content;
 
-  const handleServiceClick = (service) => {
-    setActiveService(service);
-  };
-
   return (
     <div className="services-page">
       {/* Services Hero */}
@@ -110,15 +95,29 @@ function Services() {
         <div className="container">
           {services.length > 0 ? (
             <div className="services-detailed-grid">
-              {services.map(service => (
-                <div key={service.id} className="service-detailed-card">
-                  <div className="service-card-header">
-                    <div className="service-large-icon">{service.icon}</div>
-                    <h2 className="service-card-title">{service.title}</h2>
+              {services.map((service, index) => (
+                <div 
+                  key={service.id} 
+                  className="service-detailed-card"
+                  onClick={() => setSelectedService({ ...service, image: serviceImages[index % serviceImages.length] })}
+                >
+                  <div className="service-image-wrapper">
+                    <img 
+                      src={serviceImages[index % serviceImages.length]} 
+                      alt={service.title}
+                      className="service-bg-image"
+                    />
+                    <div className="service-image-overlay">
+                      <div className="service-large-icon">{service.icon}</div>
+                    </div>
                   </div>
-                  <p className="service-card-description">{service.description}</p>
+                  <div className="service-card-content">
+                    <h2 className="service-card-title">{service.title}</h2>
+                    <p className="service-card-description">{service.description}</p>
+                    <span className="service-view-more">View Details →</span>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           ) : (
             <div className="empty-state">

@@ -32,16 +32,6 @@ function Home() {
   const { hero, services, projects } = content;
   const featuredProjects = projects.filter(p => p.title && p.status === 'completed').slice(0, 3);
 
-  // Service card images from Unsplash (architecture/interior related)
-  const serviceImages = {
-    'Interior Design': 'https://images.unsplash.com/photo-1631679706909-1844bbd07221?q=80&w=1920&auto=format&fit=crop',
-    'Architecture': 'https://images.unsplash.com/photo-1485628390555-1a7bd503f9fe?q=80&w=1920&auto=format&fit=crop',
-    'Space Planning': 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=1920&auto=format&fit=crop',
-    '3D Visualization': 'https://images.unsplash.com/photo-1503160865267-3148362c4e27?q=80&w=1920&auto=format&fit=crop',
-    'Consultation': 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?q=80&w=1920&auto=format&fit=crop',
-    'Project Management': 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1920&auto=format&fit=crop'
-  };
-
   return (
     <div className="home">
       {/* Hero Section */}
@@ -73,9 +63,14 @@ function Home() {
           <div className="services-grid">
             {services.slice(0, 6).map((service, index) => (
               <div key={service.id} className="service-card">
-                <div className="service-icon">{service.icon}</div>
-                <h3 className="service-title">{service.title}</h3>
-                <p className="service-description">{service.description}</p>
+                <div className="service-image-wrapper">
+                  <img src={serviceImages[index]} alt={service.title} className="service-bg-image" />
+                  <div className="service-icon-overlay">{service.icon}</div>
+                </div>
+                <div className="service-card-content">
+                  <h3 className="service-title">{service.title}</h3>
+                  <p className="service-description">{service.description}</p>
+                </div>
               </div>
             ))}
           </div>
