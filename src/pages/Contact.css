@@ -118,23 +118,77 @@
 .info-card {
   background-color: var(--white);
   padding: 25px;
-  border-radius: 8px;
-  box-shadow: var(--shadow);
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
   display: flex;
   gap: 20px;
   align-items: flex-start;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 4px solid transparent;
 }
 
 .info-card:hover {
-  transform: translateX(5px);
-  box-shadow: var(--shadow-hover);
+  transform: translateX(8px) translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+
+/* Colorful card accents */
+.email-card {
+  border-left-color: #667eea;
+}
+
+.email-card:hover {
+  background: linear-gradient(to right, rgba(102, 126, 234, 0.05), transparent);
+}
+
+.phone-card {
+  border-left-color: #f093fb;
+}
+
+.phone-card:hover {
+  background: linear-gradient(to right, rgba(240, 147, 251, 0.05), transparent);
+}
+
+.address-card {
+  border-left-color: #4facfe;
+}
+
+.address-card:hover {
+  background: linear-gradient(to right, rgba(79, 172, 254, 0.05), transparent);
+}
+
+.social-card {
+  border-left-color: #43e97b;
+}
+
+.social-card:hover {
+  background: linear-gradient(to right, rgba(67, 233, 123, 0.05), transparent);
 }
 
 .info-icon {
-  font-size: 2.5rem;
   min-width: 50px;
-  text-align: center;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.info-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.instagram-icon {
+  background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+}
+
+.info-card:hover .info-icon {
+  transform: scale(1.1) rotate(5deg);
 }
 
 .info-content {
@@ -166,17 +220,34 @@
 .social-links-contact {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .social-links-contact a {
-  color: var(--secondary-color);
+  color: var(--text-dark);
   font-weight: 500;
-  transition: color 0.3s ease;
+  transition: all 0.3s ease;
+  padding: 8px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-light);
 }
 
 .social-links-contact a:hover {
-  color: var(--primary-color);
+  transform: translateX(5px);
+  background: var(--secondary-color);
+  color: white;
+}
+
+.instagram-link:hover {
+  background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+  color: white !important;
+}
+
+.social-icon {
+  font-size: 1.2rem;
 }
 
 .additional-info {

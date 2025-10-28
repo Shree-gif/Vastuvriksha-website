@@ -93,42 +93,246 @@
 /* Services Preview */
 .services-preview {
   background-color: var(--bg-light);
+  position: relative;
 }
 
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 30px;
 }
 
 .service-card {
   background-color: var(--white);
-  padding: 40px 30px;
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  transition: all 0.3s ease;
-  text-align: center;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  position: relative;
+  border: 2px solid transparent;
 }
 
 .service-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-hover);
+  transform: translateY(-8px);
+  box-shadow: 0 15px 40px rgba(139, 115, 85, 0.2);
+  border-color: rgba(139, 115, 85, 0.2);
 }
 
-.service-icon {
-  font-size: 3rem;
-  margin-bottom: 20px;
+.service-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+}
+
+.service-bg-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.service-card:hover .service-bg-image {
+  transform: scale(1.08);
+}
+
+.service-icon-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 3.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  transition: all 0.4s ease;
+}
+
+.service-card:hover .service-icon-overlay {
+  transform: translate(-50%, -50%) scale(1.1);
+  background: var(--white);
+  box-shadow: 0 12px 35px rgba(139, 115, 85, 0.3);
+}
+
+.service-card-content {
+  padding: 30px 25px;
+  text-align: center;
 }
 
 .service-title {
-  font-size: 1.3rem;
-  margin-bottom: 15px;
+  font-size: 1.35rem;
+  margin-bottom: 12px;
   color: var(--primary-color);
+  font-weight: 600;
 }
 
 .service-description {
   color: var(--text-light);
+  line-height: 1.7;
+  font-size: 0.95rem;
+  margin-bottom: 15px;
+}
+
+.service-learn-more {
+  color: var(--secondary-color);
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.service-card:hover .service-learn-more {
+  transform: translateX(5px);
+}
+
+/* Service Modal */
+.service-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+  backdrop-filter: blur(5px);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.service-modal {
+  background: var(--white);
+  border-radius: 16px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  font-size: 2rem;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  color: var(--primary-color);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.modal-close:hover {
+  background: var(--primary-color);
+  color: white;
+  transform: rotate(90deg);
+}
+
+.modal-image {
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
+}
+
+.modal-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modal-content {
+  padding: 40px;
+  text-align: center;
+}
+
+.modal-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+}
+
+.modal-content h2 {
+  font-size: 2rem;
+  color: var(--primary-color);
+  margin-bottom: 20px;
+}
+
+.modal-content p {
+  color: var(--text-light);
+  line-height: 1.8;
+  font-size: 1.05rem;
+  margin-bottom: 30px;
+}
+
+.modal-features {
+  text-align: left;
+  background: var(--bg-light);
+  padding: 25px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.modal-features h3 {
+  font-size: 1.2rem;
+  color: var(--primary-color);
+  margin-bottom: 15px;
+}
+
+.modal-features ul {
+  list-style: none;
+  padding: 0;
+}
+
+.modal-features li {
+  padding: 8px 0 8px 30px;
+  position: relative;
+  color: var(--text-dark);
   line-height: 1.6;
+}
+
+.modal-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--secondary-color);
+  font-weight: bold;
+  font-size: 1.2rem;
 }
 
 /* Featured Projects */
@@ -228,38 +432,134 @@
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .feature-card {
-  background-color: var(--white);
-  padding: 40px 30px;
-  border-radius: 8px;
+  position: relative;
+  padding: 45px 35px;
+  border-radius: 16px;
   text-align: center;
-  box-shadow: var(--shadow);
-  transition: all 0.3s ease;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  cursor: pointer;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feature-bg-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.15;
+  background-size: cover;
+  background-position: center;
+  transition: all 0.5s ease;
+  z-index: 0;
+}
+
+.feature-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Sophisticated architectural color palettes with faint background images */
+.feature-card-1 {
+  background: linear-gradient(135deg, rgba(139, 115, 85, 0.9) 0%, rgba(160, 130, 109, 0.9) 100%);
+}
+
+.feature-card-1 .feature-bg-image {
+  background-image: url('https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&auto=format&fit=crop'); /* Creative Excellence - beautiful design */
+  opacity: 0.25;
+}
+
+.feature-card-2 {
+  background: linear-gradient(135deg, rgba(74, 85, 104, 0.9) 0%, rgba(45, 55, 72, 0.9) 100%);
+}
+
+.feature-card-2 .feature-bg-image {
+  background-image: url('https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=600&auto=format&fit=crop'); /* Client-Focused - team collaboration */
+  opacity: 0.25;
+}
+
+.feature-card-3 {
+  background: linear-gradient(135deg, rgba(44, 95, 93, 0.9) 0%, rgba(26, 58, 56, 0.9) 100%);
+}
+
+.feature-card-3 .feature-bg-image {
+  background-image: url('https://images.unsplash.com/photo-1501139083538-0139583c060f?w=600&auto=format&fit=crop'); /* Timely Delivery - elegant watch/clock */
+  opacity: 0.25;
+}
+
+.feature-card-4 {
+  background: linear-gradient(135deg, rgba(201, 169, 110, 0.9) 0%, rgba(160, 134, 84, 0.9) 100%);
+}
+
+.feature-card-4 .feature-bg-image {
+  background-image: url('https://images.unsplash.com/photo-1615875605825-5eb9bb5d52ac?w=600&auto=format&fit=crop'); /* Quality Assured - premium wood/materials */
+  opacity: 0.25;
 }
 
 .feature-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-hover);
+  transform: translateY(-15px) scale(1.03);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+}
+
+.feature-card:hover .feature-bg-image {
+  opacity: 0.25;
+  transform: scale(1.1);
 }
 
 .feature-icon {
-  font-size: 3rem;
+  font-size: 4rem;
   margin-bottom: 20px;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.feature-card:hover .feature-icon {
+  animation: bounce 0.6s ease;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
 }
 
 .feature-card h3 {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   margin-bottom: 15px;
-  color: var(--primary-color);
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
 
 .feature-card p {
-  color: var(--text-light);
-  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.7;
+  font-size: 1rem;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.1);
 }
 
 /* CTA Section */
@@ -329,6 +629,48 @@
   .projects-grid,
   .features-grid {
     grid-template-columns: 1fr;
+  }
+
+  .service-image-container {
+    height: 200px;
+  }
+
+  .service-content {
+    padding: 25px 20px;
+  }
+
+  .service-modal {
+    max-width: 95%;
+    margin: 10px;
+  }
+
+  .modal-image {
+    height: 200px;
+  }
+
+  .modal-content {
+    padding: 25px 20px;
+  }
+
+  .modal-content h2 {
+    font-size: 1.5rem;
+  }
+
+  .modal-close {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+    top: 15px;
+    right: 15px;
+  }
+
+  .feature-card {
+    min-height: 250px;
+    padding: 35px 25px;
+  }
+
+  .feature-icon {
+    font-size: 3rem;
   }
 
   .cta-content h2 {

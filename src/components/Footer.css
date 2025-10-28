@@ -62,23 +62,60 @@
 
 .footer-contact li {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   color: rgba(255, 255, 255, 0.8);
 }
 
-.contact-icon {
-  font-size: 1.2rem;
-  min-width: 24px;
+.footer-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--accent-color);
+  flex-shrink: 0;
 }
 
 .footer-contact a {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
   transition: color 0.3s ease;
+  font-size: 0.95rem;
 }
 
 .footer-contact a:hover {
   color: var(--accent-color);
+}
+
+.footer-social {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footer-social-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.footer-social-link svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.footer-social-link:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: translateX(5px);
+}
+
+.footer-social-link.instagram-link:hover {
+  background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  color: white;
 }
 
 .social-links {

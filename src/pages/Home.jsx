@@ -17,6 +17,16 @@ function Home() {
     return () => window.removeEventListener('contentUpdate', handleStorageChange);
   }, []);
 
+  // Service images for homepage cards
+  const serviceImages = {
+    0: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&auto=format&fit=crop',
+    1: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800&auto=format&fit=crop',
+    2: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&auto=format&fit=crop',
+    3: 'https://images.unsplash.com/photo-1600607687644-c7171b42498b?w=800&auto=format&fit=crop',
+    4: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=800&auto=format&fit=crop',
+    5: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=800&auto=format&fit=crop'
+  };
+
   if (!content) return <div className="loading">Loading...</div>;
 
   const { hero, services, projects } = content;
@@ -51,11 +61,16 @@ function Home() {
           </p>
           
           <div className="services-grid">
-            {services.slice(0, 6).map(service => (
+            {services.slice(0, 6).map((service, index) => (
               <div key={service.id} className="service-card">
-                <div className="service-icon">{service.icon}</div>
-                <h3 className="service-title">{service.title}</h3>
-                <p className="service-description">{service.description}</p>
+                <div className="service-image-wrapper">
+                  <img src={serviceImages[index]} alt={service.title} className="service-bg-image" />
+                  <div className="service-icon-overlay">{service.icon}</div>
+                </div>
+                <div className="service-card-content">
+                  <h3 className="service-title">{service.title}</h3>
+                  <p className="service-description">{service.description}</p>
+                </div>
               </div>
             ))}
           </div>
