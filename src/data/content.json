@@ -52,39 +52,129 @@
   "services": [
     {
       "id": 1,
-      "title": "Interior Design",
-      "description": "Complete interior design solutions for residential and commercial spaces",
-      "icon": "🏠"
+      "title": "Architectural Design",
+      "description": "Innovative architectural solutions that harmonize form and function",
+      "icon": "🏛️",
+      "image": "/images/services/architectural-design.jpg",
+      "subcategories": [
+        "Custom Home Design",
+        "Commercial Architecture",
+        "Sustainable Building Design",
+        "Architectural Planning",
+        "Building Renovation"
+      ],
+      "features": [
+        "Contemporary Design Approach",
+        "Sustainable Materials",
+        "Energy-Efficient Solutions",
+        "Local Building Code Compliance",
+        "3D Visualization"
+      ]
     },
     {
       "id": 2,
-      "title": "Architecture",
-      "description": "Innovative architectural design and planning services",
-      "icon": "🏛️"
+      "title": "Interior Design",
+      "description": "Transforming spaces into stunning, functional environments that reflect your style",
+      "icon": "🏠",
+      "image": "/images/services/interior-design.jpg",
+      "subcategories": [
+        "Residential Interiors",
+        "Commercial Spaces",
+        "Retail Design",
+        "Hospitality Design",
+        "Office Interiors"
+      ],
+      "features": [
+        "Custom Furniture Design",
+        "Color Consultation",
+        "Material Selection",
+        "Lighting Design",
+        "Space Planning"
+      ]
     },
     {
       "id": 3,
-      "title": "Space Planning",
-      "description": "Optimal space utilization with functional layouts",
-      "icon": "📐"
+      "title": "Landscape Architecture",
+      "description": "Creating harmonious outdoor spaces that connect nature with architecture",
+      "icon": "🌳",
+      "image": "/images/services/landscape.jpg",
+      "subcategories": [
+        "Garden Design",
+        "Terrace Gardens",
+        "Water Features",
+        "Outdoor Living Spaces",
+        "Sustainable Landscaping"
+      ],
+      "features": [
+        "Native Plant Selection",
+        "Irrigation Systems",
+        "Outdoor Lighting",
+        "Hardscape Design",
+        "Environmental Conservation"
+      ]
     },
     {
       "id": 4,
-      "title": "3D Visualization",
-      "description": "Realistic 3D renders to visualize your dream space",
-      "icon": "🎨"
+      "title": "Urban Planning",
+      "description": "Comprehensive urban design solutions for sustainable community development",
+      "icon": "🌆",
+      "image": "/images/services/urban-planning.jpg",
+      "subcategories": [
+        "Master Planning",
+        "Community Design",
+        "Mixed-Use Development",
+        "Urban Regeneration",
+        "Public Spaces"
+      ],
+      "features": [
+        "Sustainable Development",
+        "Traffic Planning",
+        "Green Space Integration",
+        "Community Engagement",
+        "Infrastructure Planning"
+      ]
     },
     {
       "id": 5,
-      "title": "Consultation",
-      "description": "Expert consultation for your design and architecture needs",
-      "icon": "💡"
+      "title": "Sustainable Design",
+      "description": "Eco-friendly architectural solutions for a better tomorrow",
+      "icon": "🌱",
+      "image": "/images/services/sustainable-design.jpg",
+      "subcategories": [
+        "Green Building Design",
+        "Energy Optimization",
+        "Waste Management",
+        "Water Conservation",
+        "Solar Integration"
+      ],
+      "features": [
+        "LEED Certification",
+        "Renewable Materials",
+        "Energy Modeling",
+        "Passive Design",
+        "Smart Home Integration"
+      ]
     },
     {
       "id": 6,
       "title": "Project Management",
-      "description": "End-to-end project management and execution",
-      "icon": "📋"
+      "description": "End-to-end project execution with meticulous attention to detail",
+      "icon": "📋",
+      "image": "/images/services/project-management.jpg",
+      "subcategories": [
+        "Construction Management",
+        "Budget Planning",
+        "Timeline Management",
+        "Quality Control",
+        "Vendor Coordination"
+      ],
+      "features": [
+        "Regular Updates",
+        "Cost Optimization",
+        "Risk Management",
+        "Quality Assurance",
+        "Timeline Tracking"
+      ]
     }
   ],
   "projects": [
@@ -100,6 +190,3 @@
     }
   ]
 }
-
-
-
