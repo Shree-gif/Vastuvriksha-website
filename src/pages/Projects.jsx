@@ -143,13 +143,23 @@ function Projects() {
                       const idx = cardIndexMap[project.id] || 0;
                       const current = imgs[idx] || imgs[0];
                       const imgKey = `${project.id}-${idx}`;
+                      const isVideo = typeof current === 'string' && (current.endsWith('.mp4') || current.includes('/video/upload'));
                       return current ? (
-                        <img
-                          src={current}
-                          alt={project.title}
-                          style={{ opacity: imageLoadedMap[imgKey] ? 1 : 0, transition: 'opacity 300ms ease' }}
-                          onLoad={() => setImageLoadedMap(prev => ({ ...prev, [imgKey]: true }))}
-                        />
+                        isVideo ? (
+                          <video
+                            src={current}
+                            controls
+                            style={{ opacity: imageLoadedMap[imgKey] ? 1 : 0, transition: 'opacity 300ms ease', width: '100%', height: '100%', objectFit: 'contain' }}
+                            onLoadedData={() => setImageLoadedMap(prev => ({ ...prev, [imgKey]: true }))}
+                          />
+                        ) : (
+                          <img
+                            src={current}
+                            alt={project.title}
+                            style={{ opacity: imageLoadedMap[imgKey] ? 1 : 0, transition: 'opacity 300ms ease' }}
+                            onLoad={() => setImageLoadedMap(prev => ({ ...prev, [imgKey]: true }))}
+                          />
+                        )
                       ) : (
                         <div className="project-placeholder">
                           <span className="placeholder-icon">🏗️</span>

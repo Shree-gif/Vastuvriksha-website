@@ -119,6 +119,12 @@
   object-fit: contain; /* Show full image for both landscape and portrait */
 }
 
+.project-gallery-image video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* When using contain, avoid zooming which would crop */
 .project-gallery-card:hover .project-gallery-image img {
   transform: none;

@@ -9,10 +9,11 @@ const projects = [
     year: '2025',
     description: 'Warm neutral palette with custom carpentry, ambient lighting, and optimized storage.',
     images: [
-      '/assets/office/2K1A4168.jpg',
-      '/assets/office/2K1A4169.jpg',
-      '/assets/office/2K1A4220.jpg',
-      '/assets/office/WhatsApp Image 2025-10-28 at 12.58.41_9730d7d3.jpg'
+      // '/images/projects/vastuvriksha-office/1.jpg',
+      // '/images/projects/vastuvriksha-office/2.jpg',
+      // '/images/projects/vastuvriksha-office/3.jpg',
+      // '/images/projects/vastuvriksha-office/4.jpg',
+    
     ]
   }
   

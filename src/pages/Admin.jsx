@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { uploadImageToCloudinary } from '../utils/cloudinary';
 import { initializeContent, saveContent, resetContent } from '../utils/storage';
 import './Admin.css';
 
@@ -9,6 +10,19 @@ function Admin() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const dragRef = useRef({ projectId: null, index: null });
+  const [lastCreatedProjectId, setLastCreatedProjectId] = useState(null);
+  const createBlankDraft = () => ({
+    tempId: Date.now() + Math.floor(Math.random() * 1000),
+    title: '',
+    category: 'residential',
+    description: '',
+    location: '',
+    year: new Date().getFullYear().toString(),
+    status: 'completed',
+    images: []
+  });
+  const [newProjectForms, setNewProjectForms] = useState([createBlankDraft()]);
+  const [editingProjectIds, setEditingProjectIds] = useState({});
 
   // Simple password protection (in production, use proper authentication)
   const ADMIN_PASSWORD = 'Vastuvriksha@2025';
@@ -42,6 +56,7 @@ function Admin() {
     if (saveContent(content)) {
       setSaveStatus('success');
       window.dispatchEvent(new Event('contentUpdate'));
+      // No auto form duplication
       setTimeout(() => setSaveStatus(''), 3000);
     } else {
       setSaveStatus('error');
@@ -146,20 +161,23 @@ function Admin() {
   };
 
   const addProject = () => {
+    const newId = Date.now();
     const newProject = {
-      id: Date.now(),
+      id: newId,
       title: '',
       category: 'residential',
       description: '',
       image: '',
       location: '',
       year: new Date().getFullYear().toString(),
-      status: 'completed'
+      status: 'completed',
+      images: []
     };
     setContent({
       ...content,
       projects: [...content.projects, newProject]
     });
+    setLastCreatedProjectId(newId);
   };
 
   const updateProject = (id, field, value) => {
@@ -190,6 +208,90 @@ function Admin() {
         : p
       )
     });
+  };
+
+  // New Project form helpers
+  const addNewProjectImage = () => {
+    setNewProject(prev => ({
+      ...prev,
+      images: [...(prev.images || []), { src: '', order: (prev.images?.length || 0) + 1 }]
+    }));
+  };
+
+  const updateNewProjectImage = (index, field, value) => {
+    setNewProject(prev => {
+      const images = [...(prev.images || [])];
+      const img = images[index] || { src: '', order: index + 1 };
+      images[index] = { ...img, [field]: field === 'order' ? Number(value) : value };
+      return { ...prev, images };
+    });
+  };
+
+  const removeNewProjectImage = (index) => {
+    setNewProject(prev => {
+      const images = [...(prev.images || [])];
+      images.splice(index, 1);
+      return { ...prev, images };
+    });
+  };
+
+  const moveNewProjectImage = (index, dir) => {
+    setNewProject(prev => {
+      const images = [...(prev.images || [])];
+      const newIndex = index + dir;
+      if (newIndex < 0 || newIndex >= images.length) return prev;
+      const tmp = images[index];
+      images[index] = images[newIndex];
+      images[newIndex] = tmp;
+      const normalized = images.map((im, i) => ({ ...im, order: i + 1 }));
+      return { ...prev, images: normalized };
+    });
+  };
+
+  const handleNewProjectImageUpload = (index, event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Please upload an image (jpg, png, webp).'); return; }
+    if (file.size > 25 * 1024 * 1024) { alert('Image too large. Max 25MB.'); return; }
+    uploadImageToCloudinary(file)
+      .then(url => updateNewProjectImage(index, 'src', url))
+      .catch(() => {
+        const reader = new FileReader();
+        reader.onloadend = () => updateNewProjectImage(index, 'src', reader.result);
+        reader.readAsDataURL(file);
+      });
+  };
+
+  const saveNewProject = () => {
+    if (!newProject.title || newProject.title.trim() === '') {
+      alert('Please enter a project title.');
+      return;
+    }
+    const projectToAdd = {
+      id: Date.now(),
+      title: newProject.title.trim(),
+      category: newProject.category,
+      description: newProject.description,
+      location: newProject.location,
+      year: newProject.year,
+      status: newProject.status,
+      images: (newProject.images || []).map((im, i) => ({ src: im.src, order: im.order ?? (i + 1) }))
+    };
+    const updated = { ...content, projects: [...(content.projects || []), projectToAdd] };
+    setContent(updated);
+    if (saveContent(updated)) {
+      window.dispatchEvent(new Event('contentUpdate'));
+      setSaveStatus('success');
+      // Clear form
+      setNewProject({
+        title: '', category: 'residential', description: '', location: '', year: new Date().getFullYear().toString(), status: 'completed', images: []
+      });
+      // Keep the form visible for adding another; do not replace existing items
+      setTimeout(() => setSaveStatus(''), 2000);
+    } else {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus(''), 2000);
+    }
   };
 
   const updateProjectImage = (projectId, index, field, value) => {
@@ -238,19 +340,19 @@ function Admin() {
   const handleProjectImageUpload = (projectId, index, event) => {
     const file = event.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (jpg, png, etc.)');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Image size should be less than 2MB.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      updateProjectImage(projectId, index, 'src', reader.result);
-    };
-    reader.readAsDataURL(file);
+    const isImage = file.type.startsWith('image/');
+    if (!isImage) { alert('Please upload an image (jpg, png, webp).'); return; }
+    const maxBytes = 25 * 1024 * 1024; // 25MB images
+    if (file.size > maxBytes) { alert('Image too large. Max 25MB.'); return; }
+    // Try Cloudinary first
+    uploadImageToCloudinary(file)
+      .then(url => { updateProjectImage(projectId, index, 'src', url); })
+      .catch(() => {
+        // Fallback to local base64 for images
+        const reader = new FileReader();
+        reader.onloadend = () => { updateProjectImage(projectId, index, 'src', reader.result); };
+        reader.readAsDataURL(file);
+      });
   };
 
   const handleImageDragStart = (projectId, index) => {
@@ -682,15 +784,117 @@ function Admin() {
           {/* Projects Tab */}
           {activeTab === 'projects' && (
             <div className="tab-content">
-              <div className="section-header">
+              <div className="section-header" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                 <h2>Projects</h2>
-                <button onClick={addProject} className="btn btn-primary">
-                  + Add Project
+                <button onClick={() => setNewProjectForms(forms => [...forms, createBlankDraft()])} className="btn btn-primary">
+                  + Add New Project
                 </button>
               </div>
 
+              {/* Multiple draft forms - each with Save/Clear */}
+              {newProjectForms.map((np, formIdx) => (
+                <div key={np.tempId} className="form-section" style={{marginBottom: 24}}>
+                  <h3>Add New Project</h3>
+                  <div className="form-grid">
+                    <div className="form-field">
+                      <label>Project Title</label>
+                      <input type="text" value={np.title} onChange={(e) => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? {...f, title: e.target.value}: f))} placeholder="Project name" />
+                    </div>
+                    <div className="form-field">
+                      <label>Category</label>
+                      <select value={np.category} onChange={(e) => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? {...f, category: e.target.value}: f))}>
+                        <option value="residential">Residential</option>
+                        <option value="commercial">Commercial</option>
+                        <option value="architectural">Architectural</option>
+                      </select>
+                    </div>
+                    <div className="form-field">
+                      <label>Location</label>
+                      <input type="text" value={np.location} onChange={(e) => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? {...f, location: e.target.value}: f))} placeholder="City, Country" />
+                    </div>
+                    <div className="form-field">
+                      <label>Year</label>
+                      <input type="text" value={np.year} onChange={(e) => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? {...f, year: e.target.value}: f))} placeholder="2025" />
+                    </div>
+                    <div className="form-field">
+                      <label>Status</label>
+                      <select value={np.status} onChange={(e) => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? {...f, status: e.target.value}: f))}>
+                        <option value="completed">Completed</option>
+                        <option value="ongoing">Ongoing</option>
+                        <option value="upcoming">Upcoming</option>
+                      </select>
+                    </div>
+                    <div className="form-field full-width">
+                      <label>Description</label>
+                      <textarea rows="3" value={np.description} onChange={(e) => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? {...f, description: e.target.value}: f))} placeholder="Project description" />
+                    </div>
+                    <div className="form-field full-width">
+                      <label>Project Images (ordered)</label>
+                      <div className="image-upload-section">
+                        {(np.images || []).map((img, idx) => (
+                          <div key={idx} className="upload-options" style={{alignItems:'center', gap:10, marginBottom:10, border:'1px dashed #e0e0e0', padding:8, borderRadius:6}}>
+                            <input type="number" min={1} value={img.order ?? idx+1} onChange={(e)=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, order: Number(e.target.value)}: m) }): f))} style={{width:70}} aria-label="Order" />
+                            <label className="upload-label">
+                              <input type="file" accept="image/*" onChange={(e)=>{
+                                const file = e.target.files[0];
+                                if (!file) return;
+                                if (!file.type.startsWith('image/')) { alert('Please upload an image (jpg, png, webp).'); return; }
+                                if (file.size > 25 * 1024 * 1024) { alert('Image too large. Max 25MB.'); return; }
+                                uploadImageToCloudinary(file)
+                                  .then(url => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, src: url}: m) }): f)))
+                                  .catch(() => { const reader = new FileReader(); reader.onloadend = () => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, src: reader.result}: m) }): f)); reader.readAsDataURL(file); });
+                              }} style={{display:'none'}} />
+                              <span className="upload-btn">📁 Upload Image</span>
+                            </label>
+                            <small style={{color:'#666'}}>Accepted: JPG, PNG, WEBP (≤25MB)</small>
+                            <input type="url" className="url-input" style={{flex:1}} placeholder="Paste image URL" value={img.src || ''} onChange={(e)=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, src: e.target.value}: m) }): f))} />
+                            <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx-1? f.images[idx]: k===idx? f.images[idx-1]: m) }): f))} disabled={idx===0}>↑</button>
+                            <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx+1? f.images[idx]: k===idx? f.images[idx+1]: m) }): f))} disabled={idx===(np.images.length-1)}>↓</button>
+                            <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.filter((_,k)=> k!==idx) }): f))}>✕</button>
+                          </div>
+                        ))}
+                        <div style={{marginTop:8}}>
+                          <button type="button" className="btn btn-primary" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: [...(f.images||[]), { src:'', order: (f.images?.length||0)+1 }] }): f))}>+ Add Image</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:'flex', gap:12, marginTop:12}}>
+                    <button type="button" className="btn btn-primary" onClick={()=>{
+                      const npv = newProjectForms[formIdx];
+                      if (!npv.title || npv.title.trim() === '') { alert('Please enter a project title.'); return; }
+                      const projectToAdd = {
+                        id: Date.now(),
+                        title: npv.title.trim(),
+                        category: npv.category,
+                        description: npv.description,
+                        location: npv.location,
+                        year: npv.year,
+                        status: npv.status,
+                        images: (npv.images || []).map((im, i) => ({ src: im.src, order: im.order ?? (i + 1) }))
+                      };
+                      const updated = { ...content, projects: [...(content.projects || []), projectToAdd] };
+                      setContent(updated);
+                      if (saveContent(updated)) {
+                        window.dispatchEvent(new Event('contentUpdate'));
+                        setSaveStatus('success');
+                        setNewProjectForms(fs => fs.filter((_,i)=> i!==formIdx));
+                        setTimeout(()=> setSaveStatus(''), 1500);
+                      } else {
+                        setSaveStatus('error');
+                        setTimeout(()=> setSaveStatus(''), 1500);
+                      }
+                    }}>Save</button>
+                    <button type="button" className="btn btn-secondary" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? createBlankDraft(): f))}>Clear</button>
+                  </div>
+                </div>
+              ))}
+
               <div className="items-list">
-                {content.projects.map(project => (
+                {[...(content.projects || [])]
+                  .slice()
+                  .sort((a,b) => (Number(b.id) || 0) - (Number(a.id) || 0))
+                  .map(project => (
                   <div key={project.id} className="item-card">
                     <div className="form-grid">
                       <div className="form-field">
@@ -742,54 +946,63 @@ function Admin() {
                           <option value="upcoming">Upcoming</option>
                         </select>
                       </div>
-                      <div className="form-field full-width">
-                        <label>Project Images (ordered)</label>
-                        <div className="image-upload-section">
-                          {(project.images || []).map((img, idx) => (
-                            <div
-                              key={idx}
-                              className="upload-options"
-                              style={{alignItems: 'center', gap: 10, marginBottom: 10, border: '1px dashed #e0e0e0', padding: 8, borderRadius: 6}}
-                              draggable
-                              onDragStart={() => handleImageDragStart(project.id, idx)}
-                              onDragOver={handleImageDragOver}
-                              onDrop={() => handleImageDrop(project.id, idx)}
-                            >
-                              <input
-                                type="number"
-                                value={typeof img === 'string' ? (idx + 1) : (img.order ?? idx + 1)}
-                                onChange={(e) => updateProjectImage(project.id, idx, 'order', e.target.value)}
-                                style={{ width: 70 }}
-                                min={1}
-                                aria-label="Order"
-                              />
-                              <label className="upload-label">
+                      <div className="form-field full-width" style={{display:'flex', gap:12, alignItems:'center'}}>
+                        <button type="button" className="btn btn-secondary" onClick={()=> setEditingProjectIds(prev => ({...prev, [project.id]: !prev[project.id]}))}>
+                          {editingProjectIds[project.id] ? 'Hide Images' : 'Edit Images'}
+                        </button>
+                        <span style={{color:'#666'}}>Reorder/add images for this project</span>
+                      </div>
+                      {editingProjectIds[project.id] && (
+                        <div className="form-field full-width">
+                          <label>Project Images (ordered)</label>
+                          <div className="image-upload-section">
+                            {(project.images || []).map((img, idx) => (
+                              <div
+                                key={idx}
+                                className="upload-options"
+                                style={{alignItems: 'center', gap: 10, marginBottom: 10, border: '1px dashed #e0e0e0', padding: 8, borderRadius: 6}}
+                                draggable
+                                onDragStart={() => handleImageDragStart(project.id, idx)}
+                                onDragOver={handleImageDragOver}
+                                onDrop={() => handleImageDrop(project.id, idx)}
+                              >
                                 <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={(e) => handleProjectImageUpload(project.id, idx, e)}
-                                  style={{ display: 'none' }}
+                                  type="number"
+                                  value={typeof img === 'string' ? (idx + 1) : (img.order ?? idx + 1)}
+                                  onChange={(e) => updateProjectImage(project.id, idx, 'order', e.target.value)}
+                                  style={{ width: 70 }}
+                                  min={1}
+                                  aria-label="Order"
                                 />
-                                <span className="upload-btn">📁 Upload</span>
-                              </label>
-                              <input
-                                type="url"
-                                value={typeof img === 'string' ? img : (img.src || '')}
-                                onChange={(e) => updateProjectImage(project.id, idx, 'src', e.target.value)}
-                                placeholder="Paste image URL"
-                                className="url-input"
-                                style={{flex: 1}}
-                              />
-                              <button type="button" className="btn-delete" onClick={() => moveProjectImage(project.id, idx, -1)}>↑</button>
-                              <button type="button" className="btn-delete" onClick={() => moveProjectImage(project.id, idx, 1)}>↓</button>
-                              <button type="button" className="btn-delete" onClick={() => removeProjectImage(project.id, idx)}>✕</button>
+                                <label className="upload-label">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleProjectImageUpload(project.id, idx, e)}
+                                    style={{ display: 'none' }}
+                                  />
+                                  <span className="upload-btn">📁 Upload Image</span>
+                                </label>
+                                <small style={{color:'#666'}}>Accepted: JPG, PNG, WEBP (≤25MB)</small>
+                                <input
+                                  type="url"
+                                  value={typeof img === 'string' ? img : (img.src || '')}
+                                  onChange={(e) => updateProjectImage(project.id, idx, 'src', e.target.value)}
+                                  placeholder="Paste image URL"
+                                  className="url-input"
+                                  style={{flex: 1}}
+                                />
+                                <button type="button" className="btn-delete" onClick={() => moveProjectImage(project.id, idx, -1)} disabled={idx===0}>↑</button>
+                                <button type="button" className="btn-delete" onClick={() => moveProjectImage(project.id, idx, 1)} disabled={idx===(project.images.length-1)}>↓</button>
+                                <button type="button" className="btn-delete" onClick={() => removeProjectImage(project.id, idx)}>✕</button>
+                              </div>
+                            ))}
+                            <div style={{marginTop: 8}}>
+                              <button type="button" className="btn btn-primary" onClick={() => addProjectImage(project.id)}>+ Add Image</button>
                             </div>
-                          ))}
-                          <div style={{marginTop: 8}}>
-                            <button type="button" className="btn btn-primary" onClick={() => addProjectImage(project.id)}>+ Add Image</button>
                           </div>
                         </div>
-                      </div>
+                      )}
                       <div className="form-field full-width">
                         <label>Description</label>
                         <textarea
