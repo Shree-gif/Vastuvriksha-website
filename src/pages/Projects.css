@@ -87,7 +87,7 @@
 }
 
 .project-gallery-card {
-  background-color: var(--white);
+  background-color: rgba(212, 175, 125, 0.12); /* faint brown */
   border-radius: 10px;
   overflow: hidden;
   box-shadow: var(--shadow);
@@ -99,25 +99,29 @@
 .project-gallery-card:hover {
   transform: translateY(-8px);
   box-shadow: var(--shadow-hover);
+  outline: 2px solid rgba(212, 175, 125, 0.6);
 }
 
 .project-gallery-image {
   position: relative;
   width: 100%;
-  height: 280px;
+  height: 320px;
   overflow: hidden;
-  background-color: var(--bg-light);
+  background-color: rgba(212, 175, 125, 0.08); /* faint brown behind images */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .project-gallery-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
+  object-fit: contain; /* Show full image for both landscape and portrait */
 }
 
+/* When using contain, avoid zooming which would crop */
 .project-gallery-card:hover .project-gallery-image img {
-  transform: scale(1.1);
+  transform: none;
 }
 
 .project-placeholder {
@@ -231,6 +235,12 @@
   color: var(--text-light);
   line-height: 1.7;
   font-size: 1rem;
+  margin-top: 10px;
+  /* Allow very long text (up to 500 words+) without breaking layout */
+  white-space: pre-wrap; /* keep intentional newlines */
+  overflow-wrap: anywhere; /* wrap long words/URLs */
+  word-break: break-word; /* safety for unbroken strings */
+  max-height: none; /* no clamp; card grows as needed */
 }
 
 /* Empty State */

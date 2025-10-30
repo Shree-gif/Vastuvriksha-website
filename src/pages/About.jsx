@@ -26,26 +26,26 @@ function About() {
     <div className="about-page">
       {/* Mission & Vision - Only show if content exists */}
       {(about.mission || about.vision) && (
-        <section className="section mission-vision">
-          <div className="container">
-            <div className="content-grid">
-              {about.mission && (
-                <div className="content-card">
-                  <div className="card-icon">🎯</div>
-                  <h2 className="card-title">Our Mission</h2>
-                  <p className="card-content">{about.mission}</p>
-                </div>
-              )}
-              {about.vision && (
-                <div className="content-card">
-                  <div className="card-icon">👁️</div>
-                  <h2 className="card-title">Our Vision</h2>
-                  <p className="card-content">{about.vision}</p>
-                </div>
-              )}
-            </div>
+      <section className="section mission-vision">
+        <div className="container">
+          <div className="content-grid">
+            {about.mission && (
+              <div className="content-card">
+                <div className="card-icon">🎯</div>
+                <h2 className="card-title">Our Mission</h2>
+                <p className="card-content">{about.mission}</p>
+              </div>
+            )}
+            {about.vision && (
+              <div className="content-card">
+                <div className="card-icon">👁️</div>
+                <h2 className="card-title">Our Vision</h2>
+                <p className="card-content">{about.vision}</p>
+              </div>
+            )}
           </div>
-        </section>
+        </div>
+      </section>
       )}
 
       {/* Values Section */}

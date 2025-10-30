@@ -32,7 +32,6 @@ function Home() {
   if (!content) return <div className="loading">Loading...</div>;
 
   const { hero, services, projects } = content;
-  const featuredProjects = projects.filter(p => p.title && p.status === 'completed').slice(0, 3);
 
   return (
     <div className="home">
@@ -100,47 +99,7 @@ function Home() {
         </div>
       </section>
 
-      {/* Featured Projects */}
-      {featuredProjects.length > 0 && (
-        <section className="section featured-projects">
-          <div className="container">
-            <h2 className="section-title">Featured Projects</h2>
-            <p className="section-subtitle">
-              Explore our latest architectural and interior design work
-            </p>
-
-            <div className="projects-grid">
-              {featuredProjects.map(project => (
-                <div key={project.id} className="project-card">
-                  {project.image && (
-                    <div className="project-image">
-                      <img src={project.image} alt={project.title} loading="lazy" />
-                      <div className="project-overlay">
-                        <span className="project-category">{project.category}</span>
-                      </div>
-                    </div>
-                  )}
-                  <div className="project-info">
-                    <h3 className="project-title">{project.title}</h3>
-                    {project.location && (
-                      <p className="project-location">📍 {project.location}</p>
-                    )}
-                    {project.description && (
-                      <p className="project-description">{project.description}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="text-center" style={{ marginTop: '60px' }}>
-              <Link to="/projects" className="btn btn-primary btn-large">
-                View All Projects
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Featured Projects removed as per request */}
 
       {/* Why Choose Us */}
       <section className="section why-choose-us">
@@ -155,7 +114,7 @@ function Home() {
               <div className="feature-bg-image"></div>
               <div className="feature-content">
                 <h3>{t('whyChoose.excellence.title')}</h3>
-                <div className="feature-icon">✨</div>
+              <div className="feature-icon">✨</div>
                 <p>{t('whyChoose.excellence.description')}</p>
               </div>
             </div>
@@ -163,7 +122,7 @@ function Home() {
               <div className="feature-bg-image"></div>
               <div className="feature-content">
                 <h3>{t('whyChoose.focused.title')}</h3>
-                <div className="feature-icon">🎯</div>
+              <div className="feature-icon">🎯</div>
                 <p>{t('whyChoose.focused.description')}</p>
               </div>
             </div>
@@ -171,7 +130,7 @@ function Home() {
               <div className="feature-bg-image"></div>
               <div className="feature-content">
                 <h3>{t('whyChoose.delivery.title')}</h3>
-                <div className="feature-icon">⚡</div>
+              <div className="feature-icon">⚡</div>
                 <p>{t('whyChoose.delivery.description')}</p>
               </div>
             </div>
@@ -179,7 +138,7 @@ function Home() {
               <div className="feature-bg-image"></div>
               <div className="feature-content">
                 <h3>{t('whyChoose.quality.title')}</h3>
-                <div className="feature-icon">💎</div>
+              <div className="feature-icon">💎</div>
                 <p>{t('whyChoose.quality.description')}</p>
               </div>
             </div>

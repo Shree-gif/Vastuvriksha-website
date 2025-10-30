@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { initializeContent, saveContent, resetContent } from '../utils/storage';
 import './Admin.css';
 
@@ -8,6 +8,7 @@ function Admin() {
   const [saveStatus, setSaveStatus] = useState('');
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const dragRef = useRef({ projectId: null, index: null });
 
   // Simple password protection (in production, use proper authentication)
   const ADMIN_PASSWORD = 'Vastuvriksha@2025';
@@ -177,6 +178,104 @@ function Admin() {
         projects: content.projects.filter(project => project.id !== id)
       });
     }
+  };
+
+  const addProjectImage = (projectId) => {
+    const project = content.projects.find(p => p.id === projectId);
+    const nextOrder = (project?.images?.length || 0) + 1;
+    setContent({
+      ...content,
+      projects: content.projects.map(p => p.id === projectId
+        ? { ...p, images: [...(p.images || []), { src: '', order: nextOrder }] }
+        : p
+      )
+    });
+  };
+
+  const updateProjectImage = (projectId, index, field, value) => {
+    setContent({
+      ...content,
+      projects: content.projects.map(p => {
+        if (p.id !== projectId) return p;
+        const images = [...(p.images || [])];
+        const img = images[index] || { src: '', order: index + 1 };
+        images[index] = { ...img, [field]: field === 'order' ? Number(value) : value };
+        return { ...p, images };
+      })
+    });
+  };
+
+  const removeProjectImage = (projectId, index) => {
+    setContent({
+      ...content,
+      projects: content.projects.map(p => {
+        if (p.id !== projectId) return p;
+        const images = [...(p.images || [])];
+        images.splice(index, 1);
+        return { ...p, images };
+      })
+    });
+  };
+
+  const moveProjectImage = (projectId, index, dir) => {
+    setContent({
+      ...content,
+      projects: content.projects.map(p => {
+        if (p.id !== projectId) return p;
+        const images = [...(p.images || [])];
+        const newIndex = index + dir;
+        if (newIndex < 0 || newIndex >= images.length) return p;
+        const tmp = images[index];
+        images[index] = images[newIndex];
+        images[newIndex] = tmp;
+        // normalize order values to current positions starting at 1
+        const normalized = images.map((im, i) => ({ ...im, order: (i + 1) }));
+        return { ...p, images: normalized };
+      })
+    });
+  };
+
+  const handleProjectImageUpload = (projectId, index, event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (jpg, png, etc.)');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image size should be less than 2MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateProjectImage(projectId, index, 'src', reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageDragStart = (projectId, index) => {
+    dragRef.current = { projectId, index };
+  };
+
+  const handleImageDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleImageDrop = (projectId, dropIndex) => {
+    const { projectId: fromProjectId, index: fromIndex } = dragRef.current || {};
+    if (fromProjectId !== projectId || fromIndex === null || fromIndex === dropIndex) return;
+    setContent(prev => {
+      const copy = { ...prev };
+      const projIdx = copy.projects.findIndex(p => p.id === projectId);
+      if (projIdx === -1) return prev;
+      const images = [...(copy.projects[projIdx].images || [])];
+      const [moved] = images.splice(fromIndex, 1);
+      images.splice(dropIndex, 0, moved);
+      const normalized = images.map((im, i) => ({ ...(typeof im === 'string' ? { src: im } : im), order: i + 1 }));
+      copy.projects[projIdx] = { ...copy.projects[projIdx], images: normalized };
+      return copy;
+    });
+    dragRef.current = { projectId: null, index: null };
   };
 
   const handleImageUpload = (id, event) => {
@@ -644,45 +743,51 @@ function Admin() {
                         </select>
                       </div>
                       <div className="form-field full-width">
-                        <label>Project Image</label>
+                        <label>Project Images (ordered)</label>
                         <div className="image-upload-section">
-                          <div className="upload-options">
-                            <div className="upload-option">
+                          {(project.images || []).map((img, idx) => (
+                            <div
+                              key={idx}
+                              className="upload-options"
+                              style={{alignItems: 'center', gap: 10, marginBottom: 10, border: '1px dashed #e0e0e0', padding: 8, borderRadius: 6}}
+                              draggable
+                              onDragStart={() => handleImageDragStart(project.id, idx)}
+                              onDragOver={handleImageDragOver}
+                              onDrop={() => handleImageDrop(project.id, idx)}
+                            >
+                              <input
+                                type="number"
+                                value={typeof img === 'string' ? (idx + 1) : (img.order ?? idx + 1)}
+                                onChange={(e) => updateProjectImage(project.id, idx, 'order', e.target.value)}
+                                style={{ width: 70 }}
+                                min={1}
+                                aria-label="Order"
+                              />
                               <label className="upload-label">
                                 <input
                                   type="file"
                                   accept="image/*"
-                                  onChange={(e) => handleImageUpload(project.id, e)}
+                                  onChange={(e) => handleProjectImageUpload(project.id, idx, e)}
                                   style={{ display: 'none' }}
                                 />
-                                <span className="upload-btn">📁 Upload Image</span>
+                                <span className="upload-btn">📁 Upload</span>
                               </label>
-                              <span className="upload-hint">Max 2MB (JPG, PNG, GIF)</span>
-                            </div>
-                            <div className="upload-divider">OR</div>
-                            <div className="upload-option">
                               <input
                                 type="url"
-                                value={project.image && !project.image.startsWith('data:') ? project.image : ''}
-                                onChange={(e) => updateProject(project.id, 'image', e.target.value)}
-                                placeholder="Paste image URL here"
+                                value={typeof img === 'string' ? img : (img.src || '')}
+                                onChange={(e) => updateProjectImage(project.id, idx, 'src', e.target.value)}
+                                placeholder="Paste image URL"
                                 className="url-input"
+                                style={{flex: 1}}
                               />
-                              <span className="upload-hint">Use external image URL</span>
+                              <button type="button" className="btn-delete" onClick={() => moveProjectImage(project.id, idx, -1)}>↑</button>
+                              <button type="button" className="btn-delete" onClick={() => moveProjectImage(project.id, idx, 1)}>↓</button>
+                              <button type="button" className="btn-delete" onClick={() => removeProjectImage(project.id, idx)}>✕</button>
                             </div>
+                          ))}
+                          <div style={{marginTop: 8}}>
+                            <button type="button" className="btn btn-primary" onClick={() => addProjectImage(project.id)}>+ Add Image</button>
                           </div>
-                          {project.image && (
-                            <div className="image-preview">
-                              <img src={project.image} alt="Preview" />
-                              <button
-                                type="button"
-                                onClick={() => updateProject(project.id, 'image', '')}
-                                className="remove-image-btn"
-                              >
-                                ✕ Remove Image
-                              </button>
-                            </div>
-                          )}
                         </div>
                       </div>
                       <div className="form-field full-width">

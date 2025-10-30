@@ -134,8 +134,8 @@ function Services() {
                         >
                           {isExpanded ? t('common.readMore').replace('Read More', 'Show Less') : t('services.moreDetails')} →
                         </button>
-                      </div>
-                    </div>
+                  </div>
+                </div>
                     
                     {isExpanded && (
                       <div className="service-expanded-details">
@@ -203,7 +203,7 @@ function Services() {
               <div className="process-step-content">
                 <h3>{t('services.steps.documentationTitle')}</h3>
                 <p>{t('services.steps.documentationDesc')}</p>
-              </div>
+            </div>
             </div>
             <div className="process-arrow-dotted">⋮</div>
             
@@ -212,7 +212,7 @@ function Services() {
               <div className="process-step-content">
                 <h3>{t('services.steps.executionTitle')}</h3>
                 <p>{t('services.steps.executionDesc')}</p>
-              </div>
+            </div>
             </div>
             <div className="process-arrow-dotted">⋮</div>
             
@@ -221,7 +221,7 @@ function Services() {
               <div className="process-step-content">
                 <h3>{t('services.steps.finalTitle')}</h3>
                 <p>{t('services.steps.finalDesc')}</p>
-              </div>
+            </div>
             </div>
           </div>
         </div>
