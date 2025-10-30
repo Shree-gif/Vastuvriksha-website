@@ -10,7 +10,7 @@ function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Simple password protection (in production, use proper authentication)
-  const ADMIN_PASSWORD = 'vastuvriksha2024';
+  const ADMIN_PASSWORD = 'Vastuvriksha@2025';
 
   useEffect(() => {
     const auth = sessionStorage.getItem('admin_auth');
@@ -221,9 +221,9 @@ function Admin() {
               Login
             </button>
           </form>
-          <div className="login-hint">
+          {/* <div className="login-hint">
             <small>Default password: vastuvriksha2024</small>
-          </div>
+          </div> */}
         </div>
       </div>
     );
