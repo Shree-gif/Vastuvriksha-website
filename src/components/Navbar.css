@@ -25,6 +25,20 @@
   font-weight: 700;
   color: var(--primary-color);
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-image {
+  height: 45px;
+  width: auto;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.logo:hover .logo-image {
+  transform: scale(1.05);
 }
 
 .logo-text {
@@ -114,6 +128,15 @@
 @media (max-width: 768px) {
   .mobile-menu-toggle {
     display: block;
+  }
+
+  .logo-image {
+    height: 35px;
+  }
+
+  .logo {
+    gap: 8px;
+    font-size: 1.3rem;
   }
 
   .nav-links {

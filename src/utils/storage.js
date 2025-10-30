@@ -1,6 +1,8 @@
 // Local storage utility functions for content management
 
 const STORAGE_KEY = 'vastuvriksha_content';
+const VERSION_KEY = 'vastuvriksha_content_version';
+const CURRENT_VERSION = '1.5'; // Increment this when you update DEFAULT_CONTENT
 
 // Default content structure
 const DEFAULT_CONTENT = {
@@ -42,7 +44,7 @@ const DEFAULT_CONTENT = {
     {
       id: 1,
       title: "Interior Design",
-      description: "Complete interior design solutions for residential and commercial spaces",
+      description: "Transforming spaces with innovative design solutions",
       icon: "🏠"
     },
     {
@@ -66,13 +68,13 @@ const DEFAULT_CONTENT = {
     {
       id: 5,
       title: "Consultation",
-      description: "Expert consultation for your design and architecture needs",
+      description: "Personalized design and Vastu consultation services",
       icon: "💡"
     },
     {
       id: 6,
-      title: "Project Management",
-      description: "End-to-end project management and execution",
+      title: "Site Management",
+      description: "On-site supervision ensuring quality and timely execution",
       icon: "📋"
     }
   ],
@@ -121,15 +123,41 @@ export const resetContent = () => {
 // Initialize content from default if localStorage is empty
 export const initializeContent = async () => {
   const stored = localStorage.getItem(STORAGE_KEY);
+  const storedVersion = localStorage.getItem(VERSION_KEY);
+  
+  // If no stored data, initialize with defaults
   if (!stored) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CONTENT));
+      localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
       return DEFAULT_CONTENT;
     } catch (error) {
       console.error('Error initializing content:', error);
       return DEFAULT_CONTENT;
     }
   }
+  
+  // If version changed, merge updates while preserving user data
+  if (storedVersion !== CURRENT_VERSION) {
+    try {
+      const storedData = JSON.parse(stored);
+      
+      // Update services from DEFAULT_CONTENT while preserving other data
+      const updatedContent = {
+        ...storedData,
+        services: DEFAULT_CONTENT.services,
+      };
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedContent));
+      localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+      console.log('✅ Content updated to version', CURRENT_VERSION);
+      return updatedContent;
+    } catch (error) {
+      console.error('Error updating content:', error);
+      return JSON.parse(stored);
+    }
+  }
+  
   return JSON.parse(stored);
 };
 

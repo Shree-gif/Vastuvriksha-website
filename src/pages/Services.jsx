@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { initializeContent } from '../utils/storage';
+import { useLanguage } from '../context/LanguageContext';
 import './Services.css';
 
 function Services() {
+  const { t } = useLanguage();
   const [content, setContent] = useState(null);
-  const [selectedService, setSelectedService] = useState(null);
+  const [expandedService, setExpandedService] = useState(null);
 
   useEffect(() => {
     initializeContent().then(data => setContent(data));
@@ -20,17 +22,15 @@ function Services() {
 
   // High-quality architectural images matching each service
   const serviceImages = [
-    'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&auto=format&fit=crop', // Interior Design - modern room
-    'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800&auto=format&fit=crop', // Architecture - architectural plans
-    'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&auto=format&fit=crop', // Space Planning - floor plan
-    'https://images.unsplash.com/photo-1600607687644-c7171b42498b?w=800&auto=format&fit=crop', // 3D Visualization - 3D rendered architectural model room
-    'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=800&auto=format&fit=crop', // Consultation - office meeting
-    'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=800&auto=format&fit=crop', // Project Management - construction site
-    'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800&auto=format&fit=crop', // Additional
-    'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&auto=format&fit=crop'  // Additional
+    'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&auto=format&fit=crop', // Interior Design
+    'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=600&auto=format&fit=crop', // Architecture
+    'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=600&auto=format&fit=crop', // Space Planning
+    'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=600&auto=format&fit=crop', // 3D Visualization - 3D rendered architectural space
+    'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=600&auto=format&fit=crop', // Consultation
+    'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop', // Site Management - interior construction work supervision
+    'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=600&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=600&auto=format&fit=crop'
   ];
-
-  const closeModal = () => setSelectedService(null);
 
   // Unique features for each service type - inspired by top architectural firms
   const serviceFeatures = {
@@ -64,7 +64,7 @@ function Services() {
       'Design direction and style guidance',
       'Vendor and contractor recommendations'
     ],
-    'Project Management': [
+    'Site Management': [
       'Timeline development and scheduling',
       'Contractor coordination and supervision',
       'Quality control and site inspections',
@@ -80,124 +80,148 @@ function Services() {
 
   return (
     <div className="services-page">
-      {/* Services Hero */}
-      <section className="services-hero">
-        <div className="container">
-          <h1 className="page-title">Architectural Excellence</h1>
-          <p className="page-subtitle">
-            Transforming visions into architectural masterpieces with innovative design solutions
-          </p>
-        </div>
-      </section>
-
       {/* Services Grid */}
       <section className="section services-content">
         <div className="container">
+          <h2 className="section-title">{t('services.title')}</h2>
+          <p className="section-subtitle">
+            {t('services.subtitle')}
+          </p>
           {services.length > 0 ? (
             <div className="services-detailed-grid">
-              {services.map((service, index) => (
-                <div 
-                  key={service.id} 
-                  className="service-detailed-card"
-                  onClick={() => setSelectedService({ ...service, image: serviceImages[index % serviceImages.length] })}
-                >
-                  <div className="service-image-wrapper">
-                    <img 
-                      src={serviceImages[index % serviceImages.length]} 
-                      alt={service.title}
-                      className="service-bg-image"
-                    />
-                    <div className="service-image-overlay">
-                      <div className="service-large-icon">{service.icon}</div>
+              {services.map((service, index) => {
+                const mapKey = (title) => {
+                  switch (title) {
+                    case 'Interior Design': return 'interiorDesign';
+                    case 'Architecture': return 'architecture';
+                    case 'Space Planning': return 'spacePlanning';
+                    case '3D Visualization': return 'visualization';
+                    case 'Consultation': return 'consultation';
+                    case 'Site Management': return 'siteManagement';
+                    default: return null;
+                  }
+                };
+                const key = mapKey(service.title);
+                const localizedTitle = key ? t(`services.${key}.title`) : service.title;
+                const localizedDesc = key ? t(`services.${key}.description`) : service.description;
+                const isExpanded = expandedService === service.id;
+                const features = serviceFeatures[service.title] || [
+                  'Professional consultation and planning',
+                  'Custom design solutions tailored to your needs',
+                  'High-quality materials and craftsmanship',
+                  'Timely project completion'
+                ];
+
+                return (
+                  <div 
+                    key={service.id} 
+                    className={`service-compact-card ${isExpanded ? 'expanded' : ''}`}
+                  >
+                    <div className="service-compact-preview">
+                      <div className="service-compact-image">
+                        <img 
+                          src={serviceImages[index % serviceImages.length]} 
+                          alt={localizedTitle}
+                        />
+                        <div className="service-compact-icon">{service.icon}</div>
+                      </div>
+                      <div className="service-compact-content">
+                        <h3>{localizedTitle}</h3>
+                        <p>{localizedDesc}</p>
+                        <button 
+                          className="more-details-btn"
+                          onClick={() => setExpandedService(isExpanded ? null : service.id)}
+                        >
+                          {isExpanded ? t('common.readMore').replace('Read More', 'Show Less') : t('services.moreDetails')} →
+                        </button>
+                      </div>
                     </div>
+                    
+                    {isExpanded && (
+                      <div className="service-expanded-details">
+                        <h4>{t('services.whatWeOffer')}</h4>
+                        <ul className="service-features-list">
+                          {features.map((feature, idx) => (
+                            <li key={idx}>{feature}</li>
+                          ))}
+                        </ul>
+                        <Link to="/contact" className="btn btn-primary">
+                          {t('services.requestQuote')}
+                        </Link>
+                      </div>
+                    )}
                   </div>
-                  <div className="service-card-content">
-                    <h2 className="service-card-title">{service.title}</h2>
-                    <p className="service-card-description">{service.description}</p>
-                    <span className="service-view-more">View Details →</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="empty-state">
-              <p>No services available at the moment. Please check back later.</p>
+              <p>{t('services.emptyMessage')}</p>
             </div>
           )}
         </div>
-
-        {/* Service Modal */}
-        {selectedService && (
-          <div className="service-modal-overlay" onClick={closeModal}>
-            <div className="service-modal" onClick={(e) => e.stopPropagation()}>
-              <button className="modal-close" onClick={closeModal}>×</button>
-              <div className="modal-image">
-                <img src={selectedService.image} alt={selectedService.title} />
-              </div>
-              <div className="modal-content">
-                <div className="modal-icon">{selectedService.icon}</div>
-                <h2>{selectedService.title}</h2>
-                <p>{selectedService.description}</p>
-                <div className="modal-features">
-                  <h3>What We Offer:</h3>
-                  <ul>
-                    {(serviceFeatures[selectedService.title] || [
-                      'Professional consultation and planning',
-                      'Custom design solutions tailored to your needs',
-                      'High-quality materials and craftsmanship',
-                      'Timely project completion'
-                    ]).map((feature, index) => (
-                      <li key={index}>{feature}</li>
-                    ))}
-                  </ul>
-                </div>
-                <Link to="/contact" className="btn btn-primary" onClick={closeModal}>
-                  Request a Quote
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
       </section>
 
-      {/* Process Section */}
+      {/* Process Section - List-style with dotted arrows */}
       <section className="section process-section">
         <div className="container">
-          <h2 className="section-title">Our Design Process</h2>
+          <h2 className="section-title">{t('services.processTitle')}</h2>
           <p className="section-subtitle">
-            A systematic approach to bringing your architectural vision to life
+            {t('services.processSubtitle')}
           </p>
 
-          <div className="process-grid">
-            <div className="process-card">
-              <div className="process-step">1</div>
-              <h3>Discovery & Consultation</h3>
-              <p>In-depth discussion of your vision, requirements, and architectural goals</p>
+          <div className="process-list">
+            <div className="process-step-item">
+              <div className="process-step-number">01</div>
+              <div className="process-step-content">
+                <h3>{t('services.steps.discoveryTitle')}</h3>
+                <p>{t('services.steps.discoveryDesc')}</p>
+              </div>
             </div>
-            <div className="process-card">
-              <div className="process-step">2</div>
-              <h3>Concept Development</h3>
-              <p>Creating detailed architectural concepts with 3D visualizations</p>
+            <div className="process-arrow-dotted">⋮</div>
+            
+            <div className="process-step-item">
+              <div className="process-step-number">02</div>
+              <div className="process-step-content">
+                <h3>{t('services.steps.conceptTitle')}</h3>
+                <p>{t('services.steps.conceptDesc')}</p>
+              </div>
             </div>
-            <div className="process-card">
-              <div className="process-step">3</div>
-              <h3>Design Refinement</h3>
-              <p>Iterative refinement based on your feedback and preferences</p>
+            <div className="process-arrow-dotted">⋮</div>
+            
+            <div className="process-step-item">
+              <div className="process-step-number">03</div>
+              <div className="process-step-content">
+                <h3>{t('services.steps.developmentTitle')}</h3>
+                <p>{t('services.steps.developmentDesc')}</p>
+              </div>
             </div>
-            <div className="process-card">
-              <div className="process-step">4</div>
-              <h3>Technical Documentation</h3>
-              <p>Detailed construction drawings and technical specifications</p>
+            <div className="process-arrow-dotted">⋮</div>
+            
+            <div className="process-step-item">
+              <div className="process-step-number">04</div>
+              <div className="process-step-content">
+                <h3>{t('services.steps.documentationTitle')}</h3>
+                <p>{t('services.steps.documentationDesc')}</p>
+              </div>
             </div>
-            <div className="process-card">
-              <div className="process-step">5</div>
-              <h3>Project Execution</h3>
-              <p>Professional implementation with quality control measures</p>
+            <div className="process-arrow-dotted">⋮</div>
+            
+            <div className="process-step-item">
+              <div className="process-step-number">05</div>
+              <div className="process-step-content">
+                <h3>{t('services.steps.executionTitle')}</h3>
+                <p>{t('services.steps.executionDesc')}</p>
+              </div>
             </div>
-            <div className="process-card">
-              <div className="process-step">6</div>
-              <h3>Final Delivery</h3>
-              <p>Project completion and handover of your transformed space</p>
+            <div className="process-arrow-dotted">⋮</div>
+            
+            <div className="process-step-item">
+              <div className="process-step-number">06</div>
+              <div className="process-step-content">
+                <h3>{t('services.steps.finalTitle')}</h3>
+                <p>{t('services.steps.finalDesc')}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -206,50 +230,41 @@ function Services() {
       {/* Why Choose Our Services */}
       <section className="section why-services">
         <div className="container">
-          <h2 className="section-title">Why Choose Vastuvriksha</h2>
+          <h2 className="section-title">{t('services.whyTitle')}</h2>
+          <p className="section-subtitle">
+            {t('services.whySubtitle')}
+          </p>
           
           <div className="benefits-grid">
-            <div className="benefit-item">
+            <div className="benefit-card benefit-card-1">
               <div className="benefit-icon">🎯</div>
-              <div>
-                <h3>Design Excellence</h3>
-                <p>Award-winning architects and designers with proven expertise</p>
-              </div>
+              <h3>{t('services.benefits.designExcellenceTitle')}</h3>
+              <p>{t('services.benefits.designExcellenceDesc')}</p>
             </div>
-            <div className="benefit-item">
+            <div className="benefit-card benefit-card-2">
               <div className="benefit-icon">💡</div>
-              <div>
-                <h3>Innovation</h3>
-                <p>Cutting-edge design solutions and sustainable practices</p>
-              </div>
+              <h3>{t('services.benefits.innovationTitle')}</h3>
+              <p>{t('services.benefits.innovationDesc')}</p>
             </div>
-            <div className="benefit-item">
+            <div className="benefit-card benefit-card-3">
               <div className="benefit-icon">🌿</div>
-              <div>
-                <h3>Sustainability</h3>
-                <p>Eco-friendly materials and energy-efficient designs</p>
-              </div>
+              <h3>{t('services.benefits.sustainabilityTitle')}</h3>
+              <p>{t('services.benefits.sustainabilityDesc')}</p>
             </div>
-            <div className="benefit-item">
+            <div className="benefit-card benefit-card-4">
               <div className="benefit-icon">⚡</div>
-              <div>
-                <h3>Efficiency</h3>
-                <p>Streamlined process and timely project delivery</p>
-              </div>
+              <h3>{t('services.benefits.efficiencyTitle')}</h3>
+              <p>{t('services.benefits.efficiencyDesc')}</p>
             </div>
-            <div className="benefit-item">
+            <div className="benefit-card benefit-card-5">
               <div className="benefit-icon">💎</div>
-              <div>
-                <h3>Quality</h3>
-                <p>Premium materials and exceptional craftsmanship</p>
-              </div>
+              <h3>{t('services.benefits.qualityTitle')}</h3>
+              <p>{t('services.benefits.qualityDesc')}</p>
             </div>
-            <div className="benefit-item">
+            <div className="benefit-card benefit-card-6">
               <div className="benefit-icon">🤝</div>
-              <div>
-                <h3>Client Focus</h3>
-                <p>Dedicated support throughout your project journey</p>
-              </div>
+              <h3>{t('services.benefits.clientFocusTitle')}</h3>
+              <p>{t('services.benefits.clientFocusDesc')}</p>
             </div>
           </div>
         </div>
@@ -258,10 +273,10 @@ function Services() {
       {/* CTA Section */}
       <section className="services-cta">
         <div className="container">
-          <h2>Ready to Transform Your Space?</h2>
-          <p>Let's collaborate to create something extraordinary</p>
+          <h2>{t('services.ctaTitle')}</h2>
+          <p>{t('services.ctaSubtitle')}</p>
           <Link to="/contact" className="btn btn-primary">
-            Schedule a Consultation
+            {t('services.ctaButton')}
           </Link>
         </div>
       </section>

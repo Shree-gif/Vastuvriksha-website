@@ -1,26 +1,42 @@
 import { useState, useEffect } from 'react';
 import { initializeContent } from '../utils/storage';
+import { getAllProjects } from '../firebase/projectService';
+import { useLanguage } from '../context/LanguageContext';
 import './Projects.css';
 
 function Projects() {
-  const [content, setContent] = useState(null);
+  const { t } = useLanguage();
+  const [projects, setProjects] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  
 
   useEffect(() => {
-    initializeContent().then(data => setContent(data));
-
-    const handleStorageChange = () => {
-      initializeContent().then(data => setContent(data));
-    };
-
-    window.addEventListener('contentUpdate', handleStorageChange);
-    return () => window.removeEventListener('contentUpdate', handleStorageChange);
+    loadProjects();
   }, []);
 
-  if (!content) return <div className="loading">Loading...</div>;
+  const loadProjects = async () => {
+    try {
+      setLoading(true);
+      // Try Firebase first
+      try {
+        const fetchedProjects = await getAllProjects();
+        setProjects(fetchedProjects);
+      } catch (firebaseError) {
+        // If Firebase fails, use localStorage
+        console.log('Firebase not configured, using localStorage');
+        const data = await initializeContent();
+        setProjects(data.projects || []);
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const { projects } = content;
-  
+  // Public page is read-only; adding projects moved to Admin page
   // Filter out projects with no title (empty placeholders)
   const validProjects = projects.filter(p => p.title && p.title.trim() !== '');
   
@@ -35,9 +51,9 @@ function Projects() {
       {/* Projects Hero */}
       <section className="projects-hero">
         <div className="container">
-          <h1 className="page-title">Our Projects</h1>
+          <h1 className="page-title">{t('projects.title')}</h1>
           <p className="page-subtitle">
-            Explore our portfolio of stunning architecture and interior design projects
+            {t('projects.subtitle')}
           </p>
         </div>
       </section>
@@ -46,16 +62,23 @@ function Projects() {
       <section className="section projects-content">
         <div className="container">
           {/* Filter Buttons */}
-          <div className="filter-buttons">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                className={`filter-btn ${filter === cat ? 'active' : ''}`}
-                onClick={() => setFilter(cat)}
-              >
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </button>
-            ))}
+          <div className="projects-controls">
+            <div className="filter-buttons">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  className={`filter-btn ${filter === cat ? 'active' : ''}`}
+                  onClick={() => setFilter(cat)}
+                >
+                  {cat === 'all' ? t('projects.all') : 
+                   cat === 'residential' ? t('projects.residential') :
+                   cat === 'commercial' ? t('projects.commercial') :
+                   cat === 'completed' ? t('projects.completed') :
+                   cat === 'ongoing' ? t('projects.ongoing') :
+                   cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Projects Grid */}
@@ -116,12 +139,9 @@ function Projects() {
           ) : (
             <div className="empty-state">
               <div className="empty-icon">📦</div>
-              <h3>No Projects Found</h3>
+              <h3>{t('projects.emptyState')}</h3>
               <p>
-                {filter === 'all' 
-                  ? 'No projects have been added yet. Check back soon!'
-                  : `No ${filter} projects available at the moment.`
-                }
+                {t('projects.emptyMessage')}
               </p>
             </div>
           )}
@@ -132,28 +152,30 @@ function Projects() {
       {validProjects.length > 0 && (
         <section className="section project-types">
           <div className="container">
-            <h2 className="section-title">Project Categories</h2>
+            <h2 className="section-title">{t('projects.projectTypes')}</h2>
             
             <div className="types-grid">
               <div className="type-card">
                 <div className="type-icon">🏠</div>
-                <h3>Residential</h3>
-                <p>Homes, apartments, villas, and residential complexes with personalized interior solutions</p>
+                <h3>{t('projects.residential')}</h3>
+                <p>{t('projects.residentialDesc')}</p>
               </div>
               <div className="type-card">
                 <div className="type-icon">🏢</div>
-                <h3>Commercial</h3>
-                <p>Offices, retail spaces, restaurants, and commercial establishments with functional designs</p>
+                <h3>{t('projects.commercial')}</h3>
+                <p>{t('projects.commercialDesc')}</p>
               </div>
               <div className="type-card">
                 <div className="type-icon">🏗️</div>
-                <h3>Architectural</h3>
-                <p>Complete architectural design and planning for new constructions and renovations</p>
+                <h3>{t('projects.architectural')}</h3>
+                <p>{t('projects.architecturalDesc')}</p>
               </div>
             </div>
           </div>
         </section>
       )}
+
+      {/* Upload moved to Admin panel */}
     </div>
   );
 }

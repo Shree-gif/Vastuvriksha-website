@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { initializeContent } from '../utils/storage';
+import { useLanguage } from '../context/LanguageContext';
 import './Contact.css';
 
 function Contact() {
+  const { t } = useLanguage();
   const [content, setContent] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -24,24 +26,65 @@ function Contact() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Since this is frontend-only, we'll just show a success message
-    // In a real application, you would send this to a backend service
-    setFormStatus('success');
+    setFormStatus('sending');
     
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        subject: '',
-        message: ''
-      });
-      setFormStatus('');
-    }, 3000);
+    try {
+      const scriptURL = 'https://script.google.com/macros/s/AKfycby8B_rRKvVNyTxqt2FTehoFVDjv6vCf_4ab3HcL-DFCaIfJr71WFTEEQbPhWidDUkWJsQ/exec';
+      const formspreeURL = 'https://formspree.io/f/mwpwqlzr';
+
+      const payload = {
+        ...formData,
+        timestamp: new Date().toISOString()
+      };
+
+      const [fsRes] = await Promise.allSettled([
+        fetch(formspreeURL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }),
+        fetch(scriptURL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+      ]);
+
+      if (fsRes.status === 'fulfilled') {
+        setFormStatus('success');
+        setTimeout(() => {
+          setFormData({
+            name: '',
+            email: '',
+            phone: '',
+            subject: '',
+            message: ''
+          });
+          setFormStatus('');
+        }, 3000);
+      } else {
+        setFormStatus('error');
+        setTimeout(() => {
+          setFormStatus('');
+        }, 5000);
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setFormStatus('error');
+      
+      setTimeout(() => {
+        setFormStatus('');
+      }, 5000);
+    }
   };
 
   if (!content) return <div className="loading">Loading...</div>;
@@ -53,9 +96,9 @@ function Contact() {
       {/* Contact Hero */}
       <section className="contact-hero">
         <div className="container">
-          <h1 className="page-title">Get in Touch</h1>
+          <h1 className="page-title">{t('contact.title')}</h1>
           <p className="page-subtitle">
-            Have a project in mind? Let's discuss how we can help transform your space
+            {t('contact.subtitle')}
           </p>
         </div>
       </section>
@@ -66,17 +109,29 @@ function Contact() {
           <div className="contact-grid">
             {/* Contact Form */}
             <div className="contact-form-wrapper">
-              <h2 className="contact-section-title">Send Us a Message</h2>
+              <h2 className="contact-section-title">{t('contact.formTitle')}</h2>
+              
+              {formStatus === 'sending' && (
+                <div className="form-message sending">
+                  ⏳ {t('contact.sending')}
+                </div>
+              )}
               
               {formStatus === 'success' && (
                 <div className="form-message success">
-                  ✅ Thank you! Your message has been received. We'll get back to you soon.
+                  ✅ {t('contact.success')}
+                </div>
+              )}
+              
+              {formStatus === 'error' && (
+                <div className="form-message error">
+                  ❌ {t('contact.error')}
                 </div>
               )}
 
               <form className="contact-form" onSubmit={handleSubmit}>
                 <div className="form-group">
-                  <label htmlFor="name">Your Name *</label>
+                  <label htmlFor="name">{t('contact.name')} *</label>
                   <input
                     type="text"
                     id="name"
@@ -84,13 +139,13 @@ function Contact() {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    placeholder="Enter your full name"
+                    placeholder={t('contact.name')}
                   />
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="email">Email Address *</label>
+                    <label htmlFor="email">{t('contact.email')} *</label>
                     <input
                       type="email"
                       id="email"
@@ -98,25 +153,25 @@ function Contact() {
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      placeholder="your.email@example.com"
+                      placeholder={t('contact.email')}
                     />
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="phone">Phone Number</label>
+                    <label htmlFor="phone">{t('contact.phone')}</label>
                     <input
                       type="tel"
                       id="phone"
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      placeholder="+1 (123) 456-7890"
+                      placeholder={t('contact.phone')}
                     />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="subject">Subject *</label>
+                  <label htmlFor="subject">{t('contact.subject')} *</label>
                   <input
                     type="text"
                     id="subject"
@@ -124,12 +179,12 @@ function Contact() {
                     value={formData.subject}
                     onChange={handleChange}
                     required
-                    placeholder="What is this regarding?"
+                    placeholder={t('contact.subject')}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="message">Message *</label>
+                  <label htmlFor="message">{t('contact.message')} *</label>
                   <textarea
                     id="message"
                     name="message"
@@ -137,19 +192,19 @@ function Contact() {
                     onChange={handleChange}
                     required
                     rows="6"
-                    placeholder="Tell us about your project or inquiry..."
+                    placeholder={t('contact.message')}
                   ></textarea>
                 </div>
 
                 <button type="submit" className="btn btn-primary submit-btn">
-                  Send Message
+                  {t('contact.sendButton')}
                 </button>
               </form>
             </div>
 
             {/* Contact Info */}
             <div className="contact-info-wrapper">
-              <h2 className="contact-section-title">Contact Information</h2>
+              <h2 className="contact-section-title">{t('contact.contactInfo')}</h2>
               
               <div className="contact-info-cards">
                 {/* Email */}
@@ -179,45 +234,29 @@ function Contact() {
                   </div>
                 </div>
 
-                {/* Address (if available) */}
-                {siteInfo.address && (
-                  <div className="info-card address-card">
-                    <div className="info-icon">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                        <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="info-content">
-                      <h3>Visit Us</h3>
-                      <p>{siteInfo.address}</p>
-                    </div>
+                {/* Location */}
+                <div className="info-card location-card">
+                  <div className="info-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                      <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                    </svg>
                   </div>
-                )}
+                  <div className="info-content">
+                    <h3>Location</h3>
+                    <a href="https://maps.app.goo.gl/qWH88EZXmrtdsCS69" target="_blank" rel="noopener noreferrer">View on Google Maps</a>
+                  </div>
+                </div>
 
                 {/* Follow Us - Instagram */}
                 <div className="info-card social-card">
-                  <div className="info-icon instagram-icon">
+                  <div className="info-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 2c2.717 0 3.056.01 4.122.06 1.065.05 1.79.217 2.428.465.66.254 1.216.598 1.772 1.153a4.908 4.908 0 0 1 1.153 1.772c.247.637.415 1.363.465 2.428.047 1.066.06 1.405.06 4.122 0 2.717-.01 3.056-.06 4.122-.05 1.065-.218 1.79-.465 2.428a4.883 4.883 0 0 1-1.153 1.772 4.915 4.915 0 0 1-1.772 1.153c-.637.247-1.363.415-2.428.465-1.066.047-1.405.06-4.122.06-2.717 0-3.056-.01-4.122-.06-1.065-.05-1.79-.218-2.428-.465a4.89 4.89 0 0 1-1.772-1.153 4.904 4.904 0 0 1-1.153-1.772c-.248-.637-.415-1.363-.465-2.428C2.013 15.056 2 14.717 2 12c0-2.717.01-3.056.06-4.122.05-1.066.217-1.79.465-2.428a4.88 4.88 0 0 1 1.153-1.772A4.897 4.897 0 0 1 5.45 2.525c.638-.248 1.362-.415 2.428-.465C8.944 2.013 9.283 2 12 2zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm6.5-.25a1.25 1.25 0 0 0-2.5 0 1.25 1.25 0 0 0 2.5 0zM12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/>
                     </svg>
                   </div>
                   <div className="info-content">
                     <h3>Follow Us</h3>
-                    <div className="social-links-contact">
-                      <a href="https://www.instagram.com/vastuvriksha_architects?igsh=MXVwbXZubnIwendqMg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" className="instagram-link">
-                        <span className="social-icon">📷</span> @vastuvriksha_architects
-                      </a>
-                      {siteInfo.socialMedia?.facebook && (
-                        <a href={siteInfo.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
-                          <span className="social-icon">📘</span> Facebook
-                        </a>
-                      )}
-                      {siteInfo.socialMedia?.linkedin && (
-                        <a href={siteInfo.socialMedia.linkedin} target="_blank" rel="noopener noreferrer">
-                          <span className="social-icon">💼</span> LinkedIn
-                        </a>
-                      )}
-                    </div>
+                    <a href="https://www.instagram.com/vastuvriksha_architects?igsh=MXVwbXZubnIwendqMg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer">@vastuvriksha_architects</a>
                   </div>
                 </div>
               </div>
@@ -225,9 +264,8 @@ function Contact() {
               {/* Business Hours or Additional Info */}
               <div className="additional-info">
                 <h3>Business Hours</h3>
-                <p>Monday - Friday: 9:00 AM - 6:00 PM</p>
-                <p>Saturday: 10:00 AM - 4:00 PM</p>
-                <p>Sunday: Closed</p>
+                <p>Everyday: 9:30 AM - 10:00 PM</p>
+                <p>We're here to help you every day of the week</p>
               </div>
             </div>
           </div>
@@ -255,6 +293,14 @@ function Contact() {
             <div className="faq-item">
               <h3>What areas do you serve?</h3>
               <p>Please contact us to discuss your location. We work on projects across various regions.</p>
+            </div>
+            <div className="faq-item">
+              <h3>What services do you specialize in?</h3>
+              <p>We specialize in architectural design, interior design, space planning, 3D visualization, and complete project management for residential and commercial spaces.</p>
+            </div>
+            <div className="faq-item">
+              <h3>Can I see examples of your work?</h3>
+              <p>Absolutely! Visit our Projects page to explore our portfolio of completed residential, commercial, and architectural projects.</p>
             </div>
           </div>
         </div>

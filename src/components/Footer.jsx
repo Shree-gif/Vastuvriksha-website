@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { initializeContent } from '../utils/storage';
+import { useLanguage } from '../context/LanguageContext';
 import './Footer.css';
 
 function Footer() {
   const [content, setContent] = useState(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     initializeContent().then(data => setContent(data));
@@ -28,23 +30,23 @@ function Footer() {
         <div className="footer-content">
           <div className="footer-section footer-about">
             <h3 className="footer-title">{siteInfo.companyName}</h3>
-            <p className="footer-description">{siteInfo.tagline}</p>
-            <p className="footer-description">{siteInfo.description}</p>
+            <p className="footer-description">{t('footer.tagline')}</p>
+            <p className="footer-description">{t('hero.subtitle')}</p>
           </div>
 
           <div className="footer-section">
-            <h4 className="footer-heading">Quick Links</h4>
+            <h4 className="footer-heading">{t('footer.quickLinks')}</h4>
             <ul className="footer-links">
-              <li><Link to="/">Home</Link></li>
-              <li><Link to="/about">About</Link></li>
-              <li><Link to="/services">Services</Link></li>
-              <li><Link to="/projects">Projects</Link></li>
-              <li><Link to="/contact">Contact</Link></li>
+              <li><Link to="/">{t('nav.home')}</Link></li>
+              <li><Link to="/about">{t('nav.about')}</Link></li>
+              <li><Link to="/services">{t('nav.services')}</Link></li>
+              <li><Link to="/projects">{t('nav.projects')}</Link></li>
+              <li><Link to="/contact">{t('nav.contact')}</Link></li>
             </ul>
           </div>
 
           <div className="footer-section">
-            <h4 className="footer-heading">Contact Us</h4>
+            <h4 className="footer-heading">{t('common.contactUs')}</h4>
             <ul className="footer-contact">
               <li>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="footer-icon">
@@ -63,25 +65,21 @@ function Footer() {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="footer-icon">
                   <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                 </svg>
-                <a href="https://maps.app.goo.gl/A2ZaXZupqoLuv3n9A" target="_blank" rel="noopener noreferrer">View on Google Maps</a>
+                <a href="https://maps.app.goo.gl/A2ZaXZupqoLuv3n9A" target="_blank" rel="noopener noreferrer">{t('contact.viewMap')}</a>
               </li>
             </ul>
           </div>
 
           <div className="footer-section">
-            <h4 className="footer-heading">Follow Us</h4>
+            <h4 className="footer-heading">{t('footer.followUs')}</h4>
             <div className="footer-social">
               <a 
                 href="https://www.instagram.com/vastuvriksha_architects?igsh=MXVwbXZubnIwendqMg%3D%3D&utm_source=qr" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="footer-social-link instagram-link"
                 aria-label="Instagram"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2c2.717 0 3.056.01 4.122.06 1.065.05 1.79.217 2.428.465.66.254 1.216.598 1.772 1.153a4.908 4.908 0 0 1 1.153 1.772c.247.637.415 1.363.465 2.428.047 1.066.06 1.405.06 4.122 0 2.717-.01 3.056-.06 4.122-.05 1.065-.218 1.79-.465 2.428a4.883 4.883 0 0 1-1.153 1.772 4.915 4.915 0 0 1-1.772 1.153c-.637.247-1.363.415-2.428.465-1.066.047-1.405.06-4.122.06-2.717 0-3.056-.01-4.122-.06-1.065-.05-1.79-.218-2.428-.465a4.89 4.89 0 0 1-1.772-1.153 4.904 4.904 0 0 1-1.153-1.772c-.248-.637-.415-1.363-.465-2.428C2.013 15.056 2 14.717 2 12c0-2.717.01-3.056.06-4.122.05-1.066.217-1.79.465-2.428a4.88 4.88 0 0 1 1.153-1.772A4.897 4.897 0 0 1 5.45 2.525c.638-.248 1.362-.415 2.428-.465C8.944 2.013 9.283 2 12 2zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm6.5-.25a1.25 1.25 0 0 0-2.5 0 1.25 1.25 0 0 0 2.5 0zM12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/>
-                </svg>
-                <span>@vastuvriksha_architects</span>
+                @vastuvriksha_architects
               </a>
               {siteInfo.socialMedia.facebook && (
                 <a 
@@ -116,7 +114,7 @@ function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <p>&copy; {currentYear} {siteInfo.companyName}. All rights reserved.</p>
+          <p>&copy; {currentYear} {siteInfo.companyName}. {t('footer.rights')}</p>
         </div>
       </div>
     </footer>

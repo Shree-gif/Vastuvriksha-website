@@ -2,17 +2,23 @@
   width: 100%;
 }
 
+
 .about-hero {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: #7a5d47;
+  background: linear-gradient(135deg, rgba(90, 67, 50, 0.7) 0%, rgba(139, 111, 71, 0.8) 50%, rgba(90, 67, 50, 0.7) 100%),
+              linear-gradient(to bottom, #7a5d47, #6b5444);
   color: var(--white);
-  padding: 80px 0;
+  padding: 100px 0 80px 0;
   text-align: center;
 }
 
 .page-title {
   font-size: 3rem;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   color: var(--white);
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .page-subtitle {
@@ -23,11 +29,11 @@
   line-height: 1.8;
 }
 
-/* Stats Section */
+/* Stats Section - merged with hero */
 .stats-section {
-  background: linear-gradient(to bottom, var(--white) 0%, #f0f4f8 100%);
-  padding: 60px 0;
-  margin-top: -40px;
+  background: transparent;
+  padding: 0 0 40px 0;
+  margin-top: -60px;
   position: relative;
   z-index: 1;
 }
@@ -74,20 +80,34 @@
 .stat-number {
   font-size: 3rem;
   font-weight: 700;
-  color: var(--secondary-color);
+  color: #ffffff;
   margin-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .stat-label {
   font-size: 1rem;
-  color: var(--text-light);
+  color: rgba(255, 255, 255, 0.9);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
-/* Mission & Vision */
+/* Mission & Vision - Similar to Our Values background */
 .mission-vision {
-  background: linear-gradient(135deg, #f0f4f8 0%, #e8eef5 100%);
+  background: linear-gradient(135deg, #fdfbf7 0%, #f8f5f0 100%);
+  position: relative;
+  padding: 40px 0 0 0;
+}
+
+.mission-vision::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(212, 175, 125, 0.05), transparent);
+  pointer-events: none;
 }
 
 .content-grid {
@@ -149,27 +169,55 @@
   font-size: 1.8rem;
   margin-bottom: 20px;
   color: var(--primary-color);
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .card-content {
   font-size: 1.1rem;
   line-height: 1.8;
   color: var(--text-light);
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: 0.2px;
 }
 
-/* Values Section */
+/* Values Section - Brownish golden faint background */
 .values-section {
-  background: linear-gradient(to bottom, var(--white) 0%, #f8fafb 100%);
+  background: linear-gradient(135deg, #fdfbf7 0%, #f8f5f0 100%);
+  position: relative;
+  padding: 60px 0 80px 0;
+}
+
+.values-section .section-title {
+  margin-bottom: 15px;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.values-section .section-subtitle {
+  margin-bottom: 50px;
+}
+
+.values-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(212, 175, 125, 0.05), transparent);
+  pointer-events: none;
 }
 
 .values-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 30px;
+  margin-top: 0;
 }
 
 .value-card {
-  background-color: var(--white);
   padding: 40px 30px;
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
@@ -180,25 +228,56 @@
   border: 2px solid transparent;
 }
 
-/* Individual value card colors with subtle gradient backgrounds */
+/* Brownish golden gradient backgrounds for all cards */
 .value-card:nth-child(1) {
-  background: linear-gradient(135deg, #fff 0%, rgba(139, 115, 85, 0.05) 100%);
-  border-color: rgba(139, 115, 85, 0.15);
+  background: linear-gradient(135deg, rgba(212, 175, 125, 0.15) 0%, rgba(195, 157, 107, 0.08) 100%);
+  border-color: rgba(212, 175, 125, 0.3);
 }
 
 .value-card:nth-child(2) {
-  background: linear-gradient(135deg, #fff 0%, rgba(74, 85, 104, 0.05) 100%);
-  border-color: rgba(74, 85, 104, 0.15);
+  background: linear-gradient(135deg, rgba(195, 157, 107, 0.15) 0%, rgba(176, 140, 89, 0.08) 100%);
+  border-color: rgba(195, 157, 107, 0.3);
 }
 
 .value-card:nth-child(3) {
-  background: linear-gradient(135deg, #fff 0%, rgba(44, 95, 93, 0.05) 100%);
-  border-color: rgba(44, 95, 93, 0.15);
+  background: linear-gradient(135deg, rgba(176, 140, 89, 0.15) 0%, rgba(158, 124, 73, 0.08) 100%);
+  border-color: rgba(176, 140, 89, 0.3);
 }
 
 .value-card:nth-child(4) {
-  background: linear-gradient(135deg, #fff 0%, rgba(201, 169, 110, 0.05) 100%);
-  border-color: rgba(201, 169, 110, 0.15);
+  background: linear-gradient(135deg, rgba(201, 169, 110, 0.15) 0%, rgba(183, 151, 92, 0.08) 100%);
+  border-color: rgba(201, 169, 110, 0.3);
+}
+
+.value-card:nth-child(5) {
+  background: linear-gradient(135deg, rgba(212, 175, 125, 0.18) 0%, rgba(195, 157, 107, 0.1) 100%);
+  border-color: rgba(212, 175, 125, 0.3);
+}
+
+.value-card:nth-child(6) {
+  background: linear-gradient(135deg, rgba(183, 151, 92, 0.15) 0%, rgba(165, 133, 74, 0.08) 100%);
+  border-color: rgba(183, 151, 92, 0.3);
+}
+
+/* Illumination effect on hover */
+.value-card::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.value-card:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
 .value-card::after {
@@ -208,30 +287,40 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+  background: linear-gradient(90deg, #d4af7d, #c39d6b);
   transform: scaleX(0);
   transition: transform 0.4s ease;
+  z-index: 1;
 }
 
 .value-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 15px 40px rgba(139, 115, 85, 0.2);
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 20px 50px rgba(212, 175, 125, 0.3), 
+              0 0 40px rgba(212, 175, 125, 0.2);
 }
 
 .value-card:nth-child(1):hover {
-  border-color: rgba(139, 115, 85, 0.4);
+  border-color: rgba(212, 175, 125, 0.6);
 }
 
 .value-card:nth-child(2):hover {
-  border-color: rgba(74, 85, 104, 0.4);
+  border-color: rgba(195, 157, 107, 0.6);
 }
 
 .value-card:nth-child(3):hover {
-  border-color: rgba(44, 95, 93, 0.4);
+  border-color: rgba(176, 140, 89, 0.6);
 }
 
 .value-card:nth-child(4):hover {
-  border-color: rgba(201, 169, 110, 0.4);
+  border-color: rgba(201, 169, 110, 0.6);
+}
+
+.value-card:nth-child(5):hover {
+  border-color: rgba(212, 175, 125, 0.6);
+}
+
+.value-card:nth-child(6):hover {
+  border-color: rgba(183, 151, 92, 0.6);
 }
 
 .value-card:hover::after {
@@ -241,11 +330,14 @@
 .value-icon {
   font-size: 3.5rem;
   margin-bottom: 20px;
-  transition: transform 0.3s ease;
+  transition: transform 0.4s ease;
+  position: relative;
+  z-index: 2;
+  display: inline-block;
 }
 
 .value-card:hover .value-icon {
-  transform: scale(1.1);
+  transform: scale(1.2) rotate(5deg);
 }
 
 .value-card h3 {
@@ -253,20 +345,37 @@
   margin-bottom: 15px;
   color: var(--primary-color);
   transition: color 0.3s ease;
+  position: relative;
+  z-index: 2;
 }
 
 .value-card:hover h3 {
-  color: var(--secondary-color);
+  color: #d4af7d;
 }
 
 .value-card p {
   color: var(--text-light);
   line-height: 1.6;
+  position: relative;
+  z-index: 2;
 }
 
-/* Approach Section */
+/* Approach Section - Noticeably different but in same theme */
 .approach-section {
-  background: linear-gradient(135deg, #f0f4f8 0%, var(--white) 100%);
+  background: linear-gradient(135deg, #f5f0eb 0%, #ebe4dc 50%, #f0e8e0 100%);
+  position: relative;
+}
+
+.approach-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 70% 30%, rgba(212, 175, 125, 0.1), transparent 60%),
+              radial-gradient(circle at 30% 70%, rgba(176, 140, 89, 0.08), transparent 60%);
+  pointer-events: none;
 }
 
 .approach-timeline {
@@ -325,10 +434,67 @@
   flex: 1;
   background-color: var(--white);
   padding: 30px;
-  border-radius: 16px;
+  border-radius: 25px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Illumination effect for timeline cards */
+.timeline-content::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.6), rgba(212, 175, 125, 0.2));
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.timeline-item:hover .timeline-content::before {
+  width: 400px;
+  height: 400px;
+}
+
+/* Rounded square background images */
+.timeline-circular-image {
+  position: absolute;
+  top: 50%;
+  right: -60px;
+  width: 140px;
+  height: 140px;
+  border-radius: 15px;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.2;
+  transform: translateY(-50%) scale(1);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+  border: 3px solid rgba(212, 175, 125, 0.3);
+  filter: blur(2px);
+}
+
+.timeline-item:hover .timeline-circular-image {
+  opacity: 0.85;
+  transform: translateY(-50%) scale(1.35);
+  right: 15px;
+  filter: blur(0);
+  border-color: rgba(212, 175, 125, 0.8);
+  box-shadow: 0 0 30px rgba(212, 175, 125, 0.6),
+              0 0 60px rgba(212, 175, 125, 0.3);
+}
+
+.timeline-content h3,
+.timeline-content p {
+  position: relative;
+  z-index: 1;
 }
 
 /* Individual colors for each approach step */
@@ -358,28 +524,30 @@
 }
 
 .timeline-item:hover .timeline-content {
-  box-shadow: 0 10px 35px rgba(139, 115, 85, 0.15);
-  transform: scale(1.02);
+  box-shadow: 0 15px 50px rgba(212, 175, 125, 0.4),
+              0 0 40px rgba(212, 175, 125, 0.3),
+              inset 0 0 60px rgba(255, 255, 255, 0.2);
+  transform: scale(1.03);
 }
 
 .timeline-item:nth-child(1):hover .timeline-content {
-  border-color: rgba(139, 115, 85, 0.4);
+  border-color: rgba(212, 175, 125, 0.8);
 }
 
 .timeline-item:nth-child(2):hover .timeline-content {
-  border-color: rgba(74, 85, 104, 0.4);
+  border-color: rgba(195, 157, 107, 0.8);
 }
 
 .timeline-item:nth-child(3):hover .timeline-content {
-  border-color: rgba(44, 95, 93, 0.4);
+  border-color: rgba(176, 140, 89, 0.8);
 }
 
 .timeline-item:nth-child(4):hover .timeline-content {
-  border-color: rgba(201, 169, 110, 0.4);
+  border-color: rgba(201, 169, 110, 0.8);
 }
 
 .timeline-item:nth-child(5):hover .timeline-content {
-  border-color: rgba(102, 126, 234, 0.4);
+  border-color: rgba(212, 175, 125, 0.8);
 }
 
 .timeline-content h3 {
@@ -387,6 +555,9 @@
   margin-bottom: 15px;
   color: var(--primary-color);
   transition: color 0.3s ease;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .timeline-item:hover .timeline-content h3 {
@@ -397,6 +568,11 @@
   color: var(--text-light);
   line-height: 1.7;
   font-size: 1.05rem;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: 0.2px;
+  word-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 /* Responsive */

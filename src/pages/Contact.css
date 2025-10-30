@@ -3,10 +3,34 @@
 }
 
 .contact-hero {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2074&auto=format&fit=crop') center/cover no-repeat;
   color: var(--white);
-  padding: 80px 0;
+  padding: 100px 0;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(90, 67, 50, 0.88) 0%, rgba(139, 111, 71, 0.82) 50%, rgba(90, 67, 50, 0.88) 100%);
+  z-index: 0;
+}
+
+.contact-hero .container {
+  position: relative;
+  z-index: 2;
+}
+
+.contact-hero .page-title,
+.contact-hero .page-subtitle {
+  position: relative;
+  z-index: 2;
 }
 
 /* Contact Content */
@@ -18,7 +42,7 @@
   display: grid;
   grid-template-columns: 1.2fr 0.8fr;
   gap: 50px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .contact-section-title {
@@ -33,6 +57,9 @@
   padding: 40px;
   border-radius: 8px;
   box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .contact-form {
@@ -84,9 +111,23 @@
 
 .submit-btn {
   width: 100%;
-  padding: 15px;
-  font-size: 1.1rem;
+  padding: 12px 30px;
+  font-size: 1rem;
   margin-top: 10px;
+  font-weight: 500;
+  background-color: var(--secondary-color);
+  color: var(--white);
+  border: none;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(139, 115, 85, 0.3);
+}
+
+.submit-btn:hover {
+  background-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(139, 115, 85, 0.5), 
+              0 0 30px rgba(139, 115, 85, 0.3);
 }
 
 .form-message {
@@ -96,16 +137,29 @@
   font-weight: 500;
 }
 
+.form-message.sending {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
 .form-message.success {
   background-color: #d4edda;
   color: #155724;
   border: 1px solid #c3e6cb;
 }
 
+.form-message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
 /* Contact Info */
 .contact-info-wrapper {
-  position: sticky;
-  top: 100px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .contact-info-cards {
@@ -132,37 +186,37 @@
   box-shadow: 0 8px 30px rgba(0,0,0,0.12);
 }
 
-/* Colorful card accents */
+/* Brownish-golden theme for all cards */
 .email-card {
-  border-left-color: #667eea;
+  border-left-color: #d4af7d;
 }
 
 .email-card:hover {
-  background: linear-gradient(to right, rgba(102, 126, 234, 0.05), transparent);
+  background: linear-gradient(to right, rgba(212, 175, 125, 0.08), transparent);
 }
 
 .phone-card {
-  border-left-color: #f093fb;
+  border-left-color: #c9a76d;
 }
 
 .phone-card:hover {
-  background: linear-gradient(to right, rgba(240, 147, 251, 0.05), transparent);
+  background: linear-gradient(to right, rgba(201, 167, 109, 0.08), transparent);
 }
 
-.address-card {
-  border-left-color: #4facfe;
+.location-card {
+  border-left-color: #b08c59;
 }
 
-.address-card:hover {
-  background: linear-gradient(to right, rgba(79, 172, 254, 0.05), transparent);
+.location-card:hover {
+  background: linear-gradient(to right, rgba(176, 140, 89, 0.08), transparent);
 }
 
 .social-card {
-  border-left-color: #43e97b;
+  border-left-color: #8b6f47;
 }
 
 .social-card:hover {
-  background: linear-gradient(to right, rgba(67, 233, 123, 0.05), transparent);
+  background: linear-gradient(to right, rgba(139, 111, 71, 0.08), transparent);
 }
 
 .info-icon {
@@ -173,7 +227,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+  background: linear-gradient(135deg, #d4af7d 0%, #c9a76d 100%);
   color: white;
   transition: all 0.3s ease;
 }
@@ -181,10 +235,6 @@
 .info-icon svg {
   width: 28px;
   height: 28px;
-}
-
-.instagram-icon {
-  background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
 }
 
 .info-card:hover .info-icon {
@@ -217,38 +267,6 @@
   margin: 0;
 }
 
-.social-links-contact {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.social-links-contact a {
-  color: var(--text-dark);
-  font-weight: 500;
-  transition: all 0.3s ease;
-  padding: 8px 12px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg-light);
-}
-
-.social-links-contact a:hover {
-  transform: translateX(5px);
-  background: var(--secondary-color);
-  color: white;
-}
-
-.instagram-link:hover {
-  background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
-  color: white !important;
-}
-
-.social-icon {
-  font-size: 1.2rem;
-}
 
 .additional-info {
   background-color: var(--white);
