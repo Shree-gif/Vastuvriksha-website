@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-// Load projects from Firestore instead of local storage
+// Load projects from Firestore; fallback to local storage on error
 import { db } from '../utils/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { initializeContent } from '../utils/storage';
 import { useLanguage } from '../context/LanguageContext';
 import './Projects.css';
 
@@ -27,8 +28,14 @@ function Projects() {
       setLoading(false);
     }, (err) => {
       console.error('Error loading projects:', err);
-      setProjects([]);
-      setLoading(false);
+      // Fallback to local storage so page isn't empty
+      initializeContent()
+        .then(data => {
+          const stored = Array.isArray(data.projects) ? data.projects : [];
+          setProjects(stored);
+        })
+        .catch(() => setProjects([]))
+        .finally(() => setLoading(false));
     });
     return () => unsubscribe();
   }, []);
