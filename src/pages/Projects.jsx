@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { initializeContent } from '../utils/storage';
+// Load projects from Firestore instead of local storage
+import { db } from '../utils/firebase';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { useLanguage } from '../context/LanguageContext';
 import './Projects.css';
 
@@ -17,22 +19,19 @@ function Projects() {
   
 
   useEffect(() => {
-    loadProjects();
-  }, []);
-
-  const loadProjects = async () => {
-    try {
-      setLoading(true);
-      const data = await initializeContent();
-      const stored = Array.isArray(data.projects) ? data.projects : [];
-      setProjects(stored);
-    } catch (error) {
-      console.error('Error loading projects:', error);
-      setProjects([]);
-    } finally {
+    setLoading(true);
+    const q = query(collection(db, 'projects'), orderBy('id', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.data()?.id ?? doc.id, ...doc.data() }));
+      setProjects(Array.isArray(list) ? list : []);
       setLoading(false);
-    }
-  };
+    }, (err) => {
+      console.error('Error loading projects:', err);
+      setProjects([]);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Public page is read-only; adding projects moved to Admin page
   // Filter out projects with no title (empty placeholders)

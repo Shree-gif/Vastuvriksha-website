@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { uploadImageToCloudinary } from '../utils/cloudinary';
+import { db } from '../utils/firebase';
+import { doc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { initializeContent, saveContent, resetContent } from '../utils/storage';
 import './Admin.css';
 
@@ -31,7 +33,16 @@ function Admin() {
     const auth = sessionStorage.getItem('admin_auth');
     if (auth === 'true') {
       setIsAuthenticated(true);
-      initializeContent().then(data => setContent(data));
+      initializeContent().then(async (data) => {
+        // Load existing projects from Firestore so Admin sees global data
+        try {
+          const snap = await getDocs(collection(db, 'projects'));
+          const projects = snap.docs.map(d => ({ id: d.data()?.id ?? d.id, ...d.data() }));
+          setContent({ ...data, projects });
+        } catch (e) {
+          setContent(data);
+        }
+      });
     }
   }, []);
 
@@ -40,7 +51,15 @@ function Admin() {
     if (password === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
       sessionStorage.setItem('admin_auth', 'true');
-      initializeContent().then(data => setContent(data));
+      initializeContent().then(async (data) => {
+        try {
+          const snap = await getDocs(collection(db, 'projects'));
+          const projects = snap.docs.map(d => ({ id: d.data()?.id ?? d.id, ...d.data() }));
+          setContent({ ...data, projects });
+        } catch (e) {
+          setContent(data);
+        }
+      });
     } else {
       alert('Incorrect password!');
     }
@@ -56,6 +75,15 @@ function Admin() {
     if (saveContent(content)) {
       setSaveStatus('success');
       window.dispatchEvent(new Event('contentUpdate'));
+      // Persist all projects to Firestore (upsert by id)
+      try {
+        (content.projects || []).forEach(async (p) => {
+          const pid = String(p.id || Date.now());
+          await setDoc(doc(db, 'projects', pid), { ...p, id: p.id || Number(pid) });
+        });
+      } catch (e) {
+        console.error('Error syncing projects to Firestore', e);
+      }
       // No auto form duplication
       setTimeout(() => setSaveStatus(''), 3000);
     } else {
@@ -195,6 +223,8 @@ function Admin() {
         ...content,
         projects: content.projects.filter(project => project.id !== id)
       });
+      // Delete from Firestore
+      deleteDoc(doc(db, 'projects', String(id))).catch(()=>{});
     }
   };
 
@@ -877,6 +907,8 @@ function Admin() {
                       setContent(updated);
                       if (saveContent(updated)) {
                         window.dispatchEvent(new Event('contentUpdate'));
+                        // Upsert into Firestore using id as document key
+                        setDoc(doc(db, 'projects', String(projectToAdd.id)), projectToAdd).catch(()=>{});
                         setSaveStatus('success');
                         setNewProjectForms(fs => fs.filter((_,i)=> i!==formIdx));
                         setTimeout(()=> setSaveStatus(''), 1500);
