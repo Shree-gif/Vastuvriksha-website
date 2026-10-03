@@ -3,6 +3,7 @@ import { uploadImageToCloudinary } from '../utils/cloudinary';
 import { db } from '../utils/firebase';
 import { doc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { initializeContent, saveContent, resetContent } from '../utils/storage';
+import { PROJECT_CATEGORIES } from '../data/projectCategories';
 import './Admin.css';
 
 function Admin() {
@@ -926,9 +927,9 @@ function Admin() {
                     <div className="form-field">
                       <label>Category</label>
                       <select value={np.category} onChange={(e) => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? {...f, category: e.target.value}: f))}>
-                        <option value="residential">Residential</option>
-                        <option value="commercial">Commercial</option>
-                        <option value="architectural">Architectural</option>
+                        {PROJECT_CATEGORIES.map(cat => (
+                          <option key={cat.value} value={cat.value}>{cat.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="form-field">
@@ -1082,9 +1083,9 @@ function Admin() {
                           value={project.category}
                           onChange={(e) => updateProject(project.id, 'category', e.target.value)}
                         >
-                          <option value="residential">Residential</option>
-                          <option value="commercial">Commercial</option>
-                          <option value="architectural">Architectural</option>
+                          {PROJECT_CATEGORIES.map(cat => (
+                            <option key={cat.value} value={cat.value}>{cat.label}</option>
+                          ))}
                         </select>
                       </div>
                       <div className="form-field">

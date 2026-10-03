@@ -4,6 +4,7 @@ import { db } from '../utils/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { initializeContent } from '../utils/storage';
 import { useLanguage } from '../context/LanguageContext';
+import { PROJECT_CATEGORIES } from '../data/projectCategories';
 import './Projects.css';
 
 function mediaUrl(item) {
@@ -78,7 +79,7 @@ function Projects() {
     ? validProjects
     : validProjects.filter(p => p.category === filter || p.status === filter);
 
-  const categories = ['all', 'residential', 'commercial', 'completed', 'ongoing'];
+  const categories = ['all', ...PROJECT_CATEGORIES.map(cat => cat.value), 'completed', 'ongoing'];
 
   const nextImage = (len) => {
     const total = typeof len === 'number' ? len : (galleryProject?.images?.length || 0);
@@ -136,12 +137,7 @@ function Projects() {
                   className={`filter-btn ${filter === cat ? 'active' : ''}`}
                   onClick={() => setFilter(cat)}
                 >
-                  {cat === 'all' ? t('projects.all') : 
-                   cat === 'residential' ? t('projects.residential') :
-                   cat === 'commercial' ? t('projects.commercial') :
-                   cat === 'completed' ? t('projects.completed') :
-                   cat === 'ongoing' ? t('projects.ongoing') :
-                   cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  {t(`projects.${cat}`)}
                 </button>
               ))}
             </div>
@@ -291,21 +287,13 @@ function Projects() {
             <h2 className="section-title">{t('projects.projectTypes')}</h2>
             
             <div className="types-grid">
-              <div className="type-card">
-                <div className="type-icon">🏠</div>
-                <h3>{t('projects.residential')}</h3>
-                <p>{t('projects.residentialDesc')}</p>
-              </div>
-              <div className="type-card">
-                <div className="type-icon">🏢</div>
-                <h3>{t('projects.commercial')}</h3>
-                <p>{t('projects.commercialDesc')}</p>
-              </div>
-              <div className="type-card">
-                <div className="type-icon">🏗️</div>
-                <h3>{t('projects.architectural')}</h3>
-                <p>{t('projects.architecturalDesc')}</p>
-              </div>
+              {PROJECT_CATEGORIES.map(cat => (
+                <div className="type-card" key={cat.value}>
+                  <div className="type-icon">{cat.icon}</div>
+                  <h3>{t(`projects.${cat.value}`)}</h3>
+                  <p>{t(`projects.${cat.value}Desc`)}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
