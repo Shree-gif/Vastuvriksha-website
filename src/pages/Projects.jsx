@@ -6,6 +6,36 @@ import { initializeContent } from '../utils/storage';
 import { useLanguage } from '../context/LanguageContext';
 import './Projects.css';
 
+function mediaUrl(item) {
+  return typeof item === 'string' ? item : (item?.src || '');
+}
+
+function isVideoUrl(src) {
+  if (typeof src !== 'string') return false;
+  return /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(src) || src.includes('/video/upload');
+}
+
+function orderedMedia(list) {
+  return (Array.isArray(list) ? list : [])
+    .slice()
+    .sort((a, b) => {
+      const ao = typeof a === 'string' ? 0 : (a.order ?? 0);
+      const bo = typeof b === 'string' ? 0 : (b.order ?? 0);
+      return ao - bo;
+    })
+    .map(mediaUrl)
+    .filter(Boolean);
+}
+
+function projectMedia(project) {
+  const images = orderedMedia(
+    Array.isArray(project.images) && project.images.length > 0
+      ? project.images
+      : (project.image ? [project.image] : [])
+  );
+  return [...images, ...orderedMedia(project.videos)];
+}
+
 function Projects() {
   const { t } = useLanguage();
   const [projects, setProjects] = useState([]);
@@ -134,27 +164,17 @@ function Projects() {
                     style={{ position: 'relative' }}
                   >
                     {(() => {
-                      const raw = Array.isArray(project.images) && project.images.length > 0
-                        ? project.images
-                        : (project.image ? [project.image] : []);
-                      const imgs = raw
-                        .slice()
-                        .sort((a, b) => {
-                          const ao = typeof a === 'string' ? 0 : (a.order ?? 0);
-                          const bo = typeof b === 'string' ? 0 : (b.order ?? 0);
-                          return ao - bo;
-                        })
-                        .map(x => (typeof x === 'string' ? x : x.src))
-                        .filter(Boolean);
+                      const imgs = projectMedia(project);
                       const idx = cardIndexMap[project.id] || 0;
                       const current = imgs[idx] || imgs[0];
                       const imgKey = `${project.id}-${idx}`;
-                      const isVideo = typeof current === 'string' && (current.endsWith('.mp4') || current.includes('/video/upload'));
+                      const isVideo = isVideoUrl(current);
                       return current ? (
                         isVideo ? (
                           <video
                             src={current}
                             controls
+                            onClick={(e) => e.stopPropagation()}
                             style={{ opacity: imageLoadedMap[imgKey] ? 1 : 0, transition: 'opacity 300ms ease', width: '100%', height: '100%', objectFit: 'contain' }}
                             onLoadedData={() => setImageLoadedMap(prev => ({ ...prev, [imgKey]: true }))}
                           />
@@ -188,11 +208,11 @@ function Projects() {
                       </div>
                     </div>
 
-                    {(project.images && project.images.length > 1) && (
+                    {(projectMedia(project).length > 1) && (
                       <>
                         <button
                           aria-label="Previous image"
-                          onClick={(e) => { e.stopPropagation(); prevCardImage(project.id, project.images.length); }}
+                          onClick={(e) => { e.stopPropagation(); prevCardImage(project.id, projectMedia(project).length); }}
                           style={{
                             position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 2,
                             background: 'rgba(255,255,255,0.5)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.7)', borderRadius: '50%',
@@ -204,7 +224,7 @@ function Projects() {
                         </button>
                         <button
                           aria-label="Next image"
-                          onClick={(e) => { e.stopPropagation(); nextCardImage(project.id, project.images.length); }}
+                          onClick={(e) => { e.stopPropagation(); nextCardImage(project.id, projectMedia(project).length); }}
                           style={{
                             position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 2,
                             background: 'rgba(255,255,255,0.5)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.7)', borderRadius: '50%',
@@ -238,6 +258,13 @@ function Projects() {
                     
                     {project.description && (
                       <p className="project-gallery-description">{project.description}</p>
+                    )}
+
+                    {project.designScope && (
+                      <p className="project-design-scope">
+                        <strong>{t('projects.designScope')}: </strong>
+                        {project.designScope}
+                      </p>
                     )}
 
                     {/* Removed "View More" button as per requirement */}
@@ -294,18 +321,14 @@ function Projects() {
           <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close-btn" onClick={() => { setShowGallery(false); setGalleryProject(null); }}>×</button>
             <h2>{galleryProject.title}</h2>
+            {galleryProject.designScope && (
+              <p className="project-design-scope">
+                <strong>{t('projects.designScope')}: </strong>
+                {galleryProject.designScope}
+              </p>
+            )}
             {(() => {
-              const imgs = (galleryProject.images && galleryProject.images.length > 0)
-                ? galleryProject.images
-                    .slice()
-                    .sort((a,b) => {
-                      const ao = typeof a === 'string' ? 0 : (a.order ?? 0);
-                      const bo = typeof b === 'string' ? 0 : (b.order ?? 0);
-                      return ao - bo;
-                    })
-                    .map(x => (typeof x === 'string' ? x : x.src))
-                    .filter(Boolean)
-                : [galleryProject.image].filter(Boolean);
+              const imgs = projectMedia(galleryProject);
               return (
                 <div style={{
                   display: 'grid',
@@ -315,7 +338,11 @@ function Projects() {
                   {imgs.map((src, i) => (
                     <div key={i} className="project-gallery-card">
                       <div className="project-gallery-image" style={{height: 220}}>
-                        <img src={src} alt={`${galleryProject.title} ${i+1}`} />
+                        {isVideoUrl(src) ? (
+                          <video src={src} controls />
+                        ) : (
+                          <img src={src} alt={`${galleryProject.title} ${i+1}`} />
+                        )}
                       </div>
                     </div>
                   ))}

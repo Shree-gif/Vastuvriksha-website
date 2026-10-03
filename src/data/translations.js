@@ -261,6 +261,7 @@ export const translations = {
       modalYearPlaceholder: 'Year',
       modalDescription: 'Description',
       modalDescriptionPlaceholder: 'Project description',
+      designScope: 'Design Scope',
       modalImage: 'Project Image',
       modalCancel: 'Cancel',
       modalAdd: 'Add Project'
@@ -549,6 +550,7 @@ export const translations = {
       modalYearPlaceholder: 'वर्ष',
       modalDescription: 'वर्णन',
       modalDescriptionPlaceholder: 'प्रकल्प वर्णन',
+      designScope: 'डिझाइन व्याप्ती',
       modalImage: 'प्रकल्प प्रतिमा',
       modalCancel: 'रद्द करा',
       modalAdd: 'प्रकल्प जोडा'

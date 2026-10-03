@@ -21,10 +21,13 @@ function Admin() {
     location: '',
     year: new Date().getFullYear().toString(),
     status: 'completed',
-    images: []
+    designScope: '',
+    images: [],
+    videos: []
   });
   const [newProjectForms, setNewProjectForms] = useState([createBlankDraft()]);
   const [editingProjectIds, setEditingProjectIds] = useState({});
+  const [uploadingKey, setUploadingKey] = useState('');
 
   // Simple password protection (in production, use proper authentication)
   const ADMIN_PASSWORD = 'Vastuvriksha@2025';
@@ -199,7 +202,9 @@ function Admin() {
       location: '',
       year: new Date().getFullYear().toString(),
       status: 'completed',
-      images: []
+      designScope: '',
+      images: [],
+      videos: []
     };
     setContent({
       ...content,
@@ -363,6 +368,94 @@ function Admin() {
         // normalize order values to current positions starting at 1
         const normalized = images.map((im, i) => ({ ...im, order: (i + 1) }));
         return { ...p, images: normalized };
+      })
+    });
+  };
+
+  const collectUploadUrls = async (files, kind) => {
+    const max = kind === 'video' ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
+    const limitLabel = kind === 'video' ? '100MB' : '25MB';
+    const urls = [];
+    const errors = [];
+    for (const file of files) {
+      const okType = kind === 'video' ? file.type.startsWith('video/') : file.type.startsWith('image/');
+      if (!okType) {
+        errors.push(`${file.name} is not a ${kind}.`);
+        continue;
+      }
+      if (file.size > max) {
+        errors.push(`${file.name} is larger than ${limitLabel}.`);
+        continue;
+      }
+      try {
+        urls.push(await uploadImageToCloudinary(file));
+      } catch {
+        errors.push(`${file.name} could not be uploaded. Try again.`);
+      }
+    }
+    if (errors.length) alert(errors.join('\n'));
+    return urls;
+  };
+
+  const appendDraftMedia = (formIdx, field, urls) => {
+    if (!urls.length) return;
+    setNewProjectForms(fs => fs.map((f, i) => {
+      if (i !== formIdx) return f;
+      const current = Array.isArray(f[field]) ? f[field] : [];
+      const added = urls.map((src, n) => ({ src, order: current.length + n + 1 }));
+      return { ...f, [field]: [...current, ...added] };
+    }));
+  };
+
+  const handleDraftFiles = async (formIdx, field, event) => {
+    const input = event.target;
+    const files = Array.from(input.files || []);
+    input.value = '';
+    if (!files.length) return;
+    setUploadingKey(`draft-${formIdx}`);
+    try {
+      const urls = await collectUploadUrls(files, field === 'videos' ? 'video' : 'image');
+      appendDraftMedia(formIdx, field, urls);
+    } finally {
+      setUploadingKey('');
+    }
+  };
+
+  const appendProjectMedia = (projectId, field, urls) => {
+    if (!urls.length) return;
+    setContent(prev => ({
+      ...prev,
+      projects: (prev.projects || []).map(p => {
+        if (p.id !== projectId) return p;
+        const current = Array.isArray(p[field]) ? p[field] : [];
+        const added = urls.map((src, n) => ({ src, order: current.length + n + 1 }));
+        return { ...p, [field]: [...current, ...added] };
+      })
+    }));
+  };
+
+  const handleExistingProjectFiles = async (projectId, field, event) => {
+    const input = event.target;
+    const files = Array.from(input.files || []);
+    input.value = '';
+    if (!files.length) return;
+    setUploadingKey(`project-${projectId}`);
+    try {
+      const urls = await collectUploadUrls(files, field === 'videos' ? 'video' : 'image');
+      appendProjectMedia(projectId, field, urls);
+    } finally {
+      setUploadingKey('');
+    }
+  };
+
+  const removeProjectVideo = (projectId, index) => {
+    setContent({
+      ...content,
+      projects: content.projects.map(p => {
+        if (p.id !== projectId) return p;
+        const videos = [...(p.videos || [])];
+        videos.splice(index, 1);
+        return { ...p, videos: videos.map((v, i) => ({ ...v, order: i + 1 })) };
       })
     });
   };
@@ -859,8 +952,26 @@ function Admin() {
                       <textarea rows="3" value={np.description} onChange={(e) => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? {...f, description: e.target.value}: f))} placeholder="Project description" />
                     </div>
                     <div className="form-field full-width">
+                      <label>Design Scope</label>
+                      <textarea rows="3" value={np.designScope || ''} onChange={(e) => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? {...f, designScope: e.target.value}: f))} placeholder="What this project covers, for example living room, kitchen, and furniture layout" />
+                    </div>
+                    <div className="form-field full-width">
                       <label>Project Images (ordered)</label>
                       <div className="image-upload-section">
+                        <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
+                          <label className="upload-label">
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/gif"
+                              multiple
+                              onChange={(e) => handleDraftFiles(formIdx, 'images', e)}
+                              style={{display:'none'}}
+                            />
+                            <span className="upload-btn">📁 Select multiple images</span>
+                          </label>
+                          <small style={{color:'#666'}}>Hold Ctrl and click several photos, or Shift to select a range. JPG, PNG, WEBP, up to 25MB each.</small>
+                          {uploadingKey === `draft-${formIdx}` && <small>Uploading… please wait</small>}
+                        </div>
                         {(np.images || []).map((img, idx) => (
                           <div key={idx} className="upload-options" style={{alignItems:'center', gap:10, marginBottom:10, border:'1px dashed #e0e0e0', padding:8, borderRadius:6}}>
                             <input type="number" min={1} value={img.order ?? idx+1} onChange={(e)=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, order: Number(e.target.value)}: m) }): f))} style={{width:70}} aria-label="Order" />
@@ -888,6 +999,31 @@ function Admin() {
                         </div>
                       </div>
                     </div>
+                    <div className="form-field full-width">
+                      <label>Project Video</label>
+                      <div className="image-upload-section">
+                        <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
+                          <label className="upload-label">
+                            <input
+                              type="file"
+                              accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+                              multiple
+                              onChange={(e) => handleDraftFiles(formIdx, 'videos', e)}
+                              style={{display:'none'}}
+                            />
+                            <span className="upload-btn">🎬 Upload video</span>
+                          </label>
+                          <small style={{color:'#666'}}>MP4, WEBM, or MOV, up to 100MB each.</small>
+                        </div>
+                        {(np.videos || []).map((vid, idx) => (
+                          <div key={idx} className="upload-options" style={{alignItems:'center', gap:10, marginBottom:10, border:'1px dashed #e0e0e0', padding:8, borderRadius:6}}>
+                            {vid.src ? <video src={vid.src} controls style={{width:160, height:90, objectFit:'cover', borderRadius:4}} /> : null}
+                            <input type="url" className="url-input" style={{flex:1}} placeholder="Video URL" value={vid.src || ''} onChange={(e)=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, videos: f.videos.map((m,k)=> k===idx? {...m, src: e.target.value}: m) }): f))} />
+                            <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, videos: (f.videos||[]).filter((_,k)=> k!==idx).map((m,k)=> ({...m, order: k+1})) }): f))}>✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   <div style={{display:'flex', gap:12, marginTop:12}}>
                     <button type="button" className="btn btn-primary" onClick={()=>{
@@ -898,10 +1034,12 @@ function Admin() {
                         title: npv.title.trim(),
                         category: npv.category,
                         description: npv.description,
+                        designScope: (npv.designScope || '').trim(),
                         location: npv.location,
                         year: npv.year,
                         status: npv.status,
-                        images: (npv.images || []).map((im, i) => ({ src: im.src, order: im.order ?? (i + 1) }))
+                        images: (npv.images || []).filter(im => im && im.src).map((im, i) => ({ src: im.src, order: im.order ?? (i + 1) })),
+                        videos: (npv.videos || []).filter(im => im && im.src).map((im, i) => ({ src: im.src, order: im.order ?? (i + 1) }))
                       };
                       const updated = { ...content, projects: [...(content.projects || []), projectToAdd] };
                       setContent(updated);
@@ -980,14 +1118,28 @@ function Admin() {
                       </div>
                       <div className="form-field full-width" style={{display:'flex', gap:12, alignItems:'center'}}>
                         <button type="button" className="btn btn-secondary" onClick={()=> setEditingProjectIds(prev => ({...prev, [project.id]: !prev[project.id]}))}>
-                          {editingProjectIds[project.id] ? 'Hide Images' : 'Edit Images'}
+                          {editingProjectIds[project.id] ? 'Hide photos and video' : 'Edit photos and video'}
                         </button>
-                        <span style={{color:'#666'}}>Reorder/add images for this project</span>
+                        <span style={{color:'#666'}}>Add several photos at once, or upload a video</span>
                       </div>
                       {editingProjectIds[project.id] && (
                         <div className="form-field full-width">
                           <label>Project Images (ordered)</label>
                           <div className="image-upload-section">
+                            <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
+                              <label className="upload-label">
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp,image/gif"
+                                  multiple
+                                  onChange={(e) => handleExistingProjectFiles(project.id, 'images', e)}
+                                  style={{ display: 'none' }}
+                                />
+                                <span className="upload-btn">📁 Select multiple images</span>
+                              </label>
+                              <small style={{color:'#666'}}>Hold Ctrl and click several photos. JPG, PNG, WEBP, up to 25MB each.</small>
+                              {uploadingKey === `project-${project.id}` && <small>Uploading… please wait</small>}
+                            </div>
                             {(project.images || []).map((img, idx) => (
                               <div
                                 key={idx}
@@ -1033,6 +1185,47 @@ function Admin() {
                               <button type="button" className="btn btn-primary" onClick={() => addProjectImage(project.id)}>+ Add Image</button>
                             </div>
                           </div>
+                          <label style={{marginTop: 16, display: 'block'}}>Project Video</label>
+                          <div className="image-upload-section">
+                            <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
+                              <label className="upload-label">
+                                <input
+                                  type="file"
+                                  accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+                                  multiple
+                                  onChange={(e) => handleExistingProjectFiles(project.id, 'videos', e)}
+                                  style={{ display: 'none' }}
+                                />
+                                <span className="upload-btn">🎬 Upload video</span>
+                              </label>
+                              <small style={{color:'#666'}}>MP4, WEBM, or MOV, up to 100MB each.</small>
+                            </div>
+                            {(project.videos || []).map((vid, idx) => (
+                              <div key={idx} className="upload-options" style={{alignItems:'center', gap:10, marginBottom:10, border:'1px dashed #e0e0e0', padding:8, borderRadius:6}}>
+                                {vid.src ? <video src={vid.src} controls style={{width:160, height:90, objectFit:'cover', borderRadius:4}} /> : null}
+                                <input
+                                  type="url"
+                                  value={vid.src || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setContent(prev => ({
+                                      ...prev,
+                                      projects: prev.projects.map(p => {
+                                        if (p.id !== project.id) return p;
+                                        const videos = [...(p.videos || [])];
+                                        videos[idx] = { ...(videos[idx] || {}), src: value, order: videos[idx]?.order ?? idx + 1 };
+                                        return { ...p, videos };
+                                      })
+                                    }));
+                                  }}
+                                  placeholder="Video URL"
+                                  className="url-input"
+                                  style={{flex: 1}}
+                                />
+                                <button type="button" className="btn-delete" onClick={() => removeProjectVideo(project.id, idx)}>✕</button>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                       <div className="form-field full-width">
@@ -1042,6 +1235,15 @@ function Admin() {
                           onChange={(e) => updateProject(project.id, 'description', e.target.value)}
                           rows="3"
                           placeholder="Project description"
+                        />
+                      </div>
+                      <div className="form-field full-width">
+                        <label>Design Scope</label>
+                        <textarea
+                          value={project.designScope || ''}
+                          onChange={(e) => updateProject(project.id, 'designScope', e.target.value)}
+                          rows="3"
+                          placeholder="What this project covers, for example living room, kitchen, and furniture layout"
                         />
                       </div>
                     </div>
