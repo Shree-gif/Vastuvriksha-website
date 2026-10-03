@@ -280,25 +280,6 @@ function Projects() {
         </div>
       </section>
 
-      {/* Project Types Info */}
-      {validProjects.length > 0 && (
-        <section className="section project-types">
-          <div className="container">
-            <h2 className="section-title">{t('projects.projectTypes')}</h2>
-            
-            <div className="types-grid">
-              {PROJECT_CATEGORIES.map(cat => (
-                <div className="type-card" key={cat.value}>
-                  <div className="type-icon">{cat.icon}</div>
-                  <h3>{t(`projects.${cat.value}`)}</h3>
-                  <p>{t(`projects.${cat.value}Desc`)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Project Gallery Modal - Grid view */}
       {showGallery && galleryProject && (
         <div

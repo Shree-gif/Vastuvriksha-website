@@ -290,47 +290,6 @@
   line-height: 1.6;
 }
 
-/* Project Types */
-.project-types {
-  background-color: var(--white);
-}
-
-.types-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 30px;
-}
-
-.type-card {
-  background-color: var(--bg-light);
-  padding: 40px 30px;
-  border-radius: 8px;
-  text-align: center;
-  box-shadow: var(--shadow);
-  transition: all 0.3s ease;
-}
-
-.type-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-hover);
-}
-
-.type-icon {
-  font-size: 3.5rem;
-  margin-bottom: 20px;
-}
-
-.type-card h3 {
-  font-size: 1.4rem;
-  margin-bottom: 15px;
-  color: var(--primary-color);
-}
-
-.type-card p {
-  color: var(--text-light);
-  line-height: 1.6;
-}
-
 /* Admin Upload Button */
 .admin-upload-btn {
   background: linear-gradient(135deg, #d4af7d, #c39d6b);
@@ -510,10 +469,6 @@
   }
 
   .projects-gallery {
-    grid-template-columns: 1fr;
-  }
-
-  .types-grid {
     grid-template-columns: 1fr;
   }
 

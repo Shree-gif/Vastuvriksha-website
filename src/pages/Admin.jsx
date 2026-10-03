@@ -6,6 +6,80 @@ import { initializeContent, saveContent, resetContent } from '../utils/storage';
 import { PROJECT_CATEGORIES } from '../data/projectCategories';
 import './Admin.css';
 
+function isImageFile(file) {
+  return file.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif|avif)$/i.test(file.name || '');
+}
+
+function isVideoFile(file) {
+  return file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v|ogg)$/i.test(file.name || '');
+}
+
+function asMedia(item) {
+  return typeof item === 'string' ? { src: item } : { ...(item || {}) };
+}
+
+function sortAndNormalize(list) {
+  const items = Array.isArray(list) ? list : [];
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const ao = typeof a.item === 'string' ? a.index + 1 : (Number(a.item?.order) || a.index + 1);
+      const bo = typeof b.item === 'string' ? b.index + 1 : (Number(b.item?.order) || b.index + 1);
+      return ao - bo || a.index - b.index;
+    })
+    .map(({ item }, i) => ({ ...asMedia(item), order: i + 1 }));
+}
+
+function moveInList(list, index, dir) {
+  const next = [...(list || [])];
+  const target = index + dir;
+  if (target < 0 || target >= next.length) return sortAndNormalize(next);
+  const [item] = next.splice(index, 1);
+  next.splice(target, 0, item);
+  return next.map((entry, i) => ({ ...asMedia(entry), order: i + 1 }));
+}
+
+function withOrderedProjects(projects) {
+  return (projects || []).map(project => ({
+    ...project,
+    images: sortAndNormalize(project.images),
+    videos: sortAndNormalize(project.videos)
+  }));
+}
+
+function shortUploadError(err) {
+  const raw = String(err?.message || '');
+  const jsonStart = raw.indexOf('{');
+  if (jsonStart >= 0) {
+    try {
+      const parsed = JSON.parse(raw.slice(jsonStart));
+      if (parsed?.error?.message) return parsed.error.message;
+    } catch {
+      /* use the raw message below */
+    }
+  }
+  return raw.replace(/^Cloudinary upload failed:\s*\d+\s*/, '').slice(0, 180) || 'could not be uploaded';
+}
+
+function FilePicker({ label, accept, disabled, onPick }) {
+  return (
+    <label className={`upload-btn file-picker ${disabled ? 'is-disabled' : ''}`}>
+      {label}
+      <input
+        type="file"
+        accept={accept}
+        multiple
+        disabled={disabled}
+        onChange={(e) => {
+          const picked = Array.from(e.target.files || []);
+          e.target.value = '';
+          if (picked.length) onPick(picked);
+        }}
+      />
+    </label>
+  );
+}
+
 function Admin() {
   const [content, setContent] = useState(null);
   const [activeTab, setActiveTab] = useState('siteInfo');
@@ -29,6 +103,7 @@ function Admin() {
   const [newProjectForms, setNewProjectForms] = useState([createBlankDraft()]);
   const [editingProjectIds, setEditingProjectIds] = useState({});
   const [uploadingKey, setUploadingKey] = useState('');
+  const [uploadNote, setUploadNote] = useState(null);
 
   // Simple password protection (in production, use proper authentication)
   const ADMIN_PASSWORD = 'Vastuvriksha@2025';
@@ -41,7 +116,7 @@ function Admin() {
         // Load existing projects from Firestore so Admin sees global data
         try {
           const snap = await getDocs(collection(db, 'projects'));
-          const projects = snap.docs.map(d => ({ id: d.data()?.id ?? d.id, ...d.data() }));
+          const projects = withOrderedProjects(snap.docs.map(d => ({ id: d.data()?.id ?? d.id, ...d.data() })));
           setContent({ ...data, projects });
         } catch (e) {
           setContent(data);
@@ -58,7 +133,7 @@ function Admin() {
       initializeContent().then(async (data) => {
         try {
           const snap = await getDocs(collection(db, 'projects'));
-          const projects = snap.docs.map(d => ({ id: d.data()?.id ?? d.id, ...d.data() }));
+          const projects = withOrderedProjects(snap.docs.map(d => ({ id: d.data()?.id ?? d.id, ...d.data() })));
           setContent({ ...data, projects });
         } catch (e) {
           setContent(data);
@@ -288,7 +363,7 @@ function Admin() {
     const file = event.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { alert('Please upload an image (jpg, png, webp).'); return; }
-    if (file.size > 25 * 1024 * 1024) { alert('Image too large. Max 25MB.'); return; }
+    if (file.size > 40 * 1024 * 1024) { alert('Image too large. Max 40MB. A 20MB photo is reduced automatically.'); return; }
     uploadImageToCloudinary(file)
       .then(url => updateNewProjectImage(index, 'src', url))
       .catch(() => {
@@ -373,29 +448,44 @@ function Admin() {
     });
   };
 
-  const collectUploadUrls = async (files, kind) => {
-    const max = kind === 'video' ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
-    const limitLabel = kind === 'video' ? '100MB' : '25MB';
-    const urls = [];
+  const runUploads = async (key, files, kind, onUrl) => {
+    const max = kind === 'video' ? 100 * 1024 * 1024 : 40 * 1024 * 1024;
+    const limitLabel = kind === 'video' ? '100MB' : '40MB';
     const errors = [];
-    for (const file of files) {
-      const okType = kind === 'video' ? file.type.startsWith('video/') : file.type.startsWith('image/');
-      if (!okType) {
-        errors.push(`${file.name} is not a ${kind}.`);
-        continue;
+    let done = 0;
+    setUploadingKey(key);
+    setUploadNote({ key, text: `Uploading ${files.length} file${files.length === 1 ? '' : 's'}… keep this page open.`, isError: false });
+    try {
+      for (const file of files) {
+        const okType = kind === 'video' ? isVideoFile(file) : isImageFile(file);
+        if (!okType) {
+          errors.push(`${file.name} is not a ${kind}.`);
+          continue;
+        }
+        if (file.size > max) {
+          errors.push(`${file.name} is larger than ${limitLabel}.`);
+          continue;
+        }
+        try {
+          if (kind === 'image' && file.size > 9.5 * 1024 * 1024) {
+            setUploadNote({ key, text: `Preparing a high-quality copy of ${file.name}…`, isError: false });
+          }
+          const url = await uploadImageToCloudinary(file);
+          done += 1;
+          onUrl(url);
+          setUploadNote({ key, text: `Uploaded ${done} of ${files.length}…`, isError: false });
+        } catch (err) {
+          errors.push(`${file.name}: ${shortUploadError(err)}`);
+        }
       }
-      if (file.size > max) {
-        errors.push(`${file.name} is larger than ${limitLabel}.`);
-        continue;
+      if (errors.length) {
+        setUploadNote({ key, text: errors.join(' '), isError: true });
+      } else if (done) {
+        setUploadNote({ key, text: `${done} uploaded. Use Up and Down to set the order, then click Save.`, isError: false });
       }
-      try {
-        urls.push(await uploadImageToCloudinary(file));
-      } catch {
-        errors.push(`${file.name} could not be uploaded. Try again.`);
-      }
+    } finally {
+      setUploadingKey('');
     }
-    if (errors.length) alert(errors.join('\n'));
-    return urls;
   };
 
   const appendDraftMedia = (formIdx, field, urls) => {
@@ -408,18 +498,10 @@ function Admin() {
     }));
   };
 
-  const handleDraftFiles = async (formIdx, field, event) => {
-    const input = event.target;
-    const files = Array.from(input.files || []);
-    input.value = '';
-    if (!files.length) return;
-    setUploadingKey(`draft-${formIdx}`);
-    try {
-      const urls = await collectUploadUrls(files, field === 'videos' ? 'video' : 'image');
-      appendDraftMedia(formIdx, field, urls);
-    } finally {
-      setUploadingKey('');
-    }
+  const handleDraftPicked = (formIdx, field, files) => {
+    runUploads(`draft-${formIdx}-${field}`, files, field === 'videos' ? 'video' : 'image', (url) => {
+      appendDraftMedia(formIdx, field, [url]);
+    });
   };
 
   const appendProjectMedia = (projectId, field, urls) => {
@@ -428,37 +510,47 @@ function Admin() {
       ...prev,
       projects: (prev.projects || []).map(p => {
         if (p.id !== projectId) return p;
-        const current = Array.isArray(p[field]) ? p[field] : [];
-        const added = urls.map((src, n) => ({ src, order: current.length + n + 1 }));
-        return { ...p, [field]: [...current, ...added] };
+        const next = sortAndNormalize([...(p[field] || []), ...urls.map(src => ({ src }))]);
+        setDoc(doc(db, 'projects', String(p.id)), { [field]: next }, { merge: true }).catch(() => {});
+        return { ...p, [field]: next };
       })
     }));
   };
 
-  const handleExistingProjectFiles = async (projectId, field, event) => {
-    const input = event.target;
-    const files = Array.from(input.files || []);
-    input.value = '';
-    if (!files.length) return;
-    setUploadingKey(`project-${projectId}`);
-    try {
-      const urls = await collectUploadUrls(files, field === 'videos' ? 'video' : 'image');
-      appendProjectMedia(projectId, field, urls);
-    } finally {
-      setUploadingKey('');
-    }
+  const moveDraftMedia = (formIdx, field, index, dir) => {
+    setNewProjectForms(fs => fs.map((f, i) => (
+      i === formIdx ? { ...f, [field]: moveInList(f[field], index, dir) } : f
+    )));
+  };
+
+  const moveExistingMedia = (projectId, field, index, dir) => {
+    setContent(prev => ({
+      ...prev,
+      projects: (prev.projects || []).map(p => {
+        if (p.id !== projectId) return p;
+        const next = moveInList(p[field], index, dir);
+        setDoc(doc(db, 'projects', String(p.id)), { [field]: next }, { merge: true }).catch(() => {});
+        return { ...p, [field]: next };
+      })
+    }));
+  };
+
+  const handleExistingPicked = (projectId, field, files) => {
+    runUploads(`project-${projectId}-${field}`, files, field === 'videos' ? 'video' : 'image', (url) => {
+      appendProjectMedia(projectId, field, [url]);
+    });
   };
 
   const removeProjectVideo = (projectId, index) => {
-    setContent({
-      ...content,
-      projects: content.projects.map(p => {
+    setContent(prev => ({
+      ...prev,
+      projects: prev.projects.map(p => {
         if (p.id !== projectId) return p;
-        const videos = [...(p.videos || [])];
-        videos.splice(index, 1);
-        return { ...p, videos: videos.map((v, i) => ({ ...v, order: i + 1 })) };
+        const videos = sortAndNormalize((p.videos || []).filter((_, i) => i !== index));
+        setDoc(doc(db, 'projects', String(p.id)), { videos }, { merge: true }).catch(() => {});
+        return { ...p, videos };
       })
-    });
+    }));
   };
 
   const handleProjectImageUpload = (projectId, index, event) => {
@@ -466,8 +558,8 @@ function Admin() {
     if (!file) return;
     const isImage = file.type.startsWith('image/');
     if (!isImage) { alert('Please upload an image (jpg, png, webp).'); return; }
-    const maxBytes = 25 * 1024 * 1024; // 25MB images
-    if (file.size > maxBytes) { alert('Image too large. Max 25MB.'); return; }
+    const maxBytes = 40 * 1024 * 1024;
+    if (file.size > maxBytes) { alert('Image too large. Max 40MB. A 20MB photo is reduced automatically.'); return; }
     // Try Cloudinary first
     uploadImageToCloudinary(file)
       .then(url => { updateProjectImage(projectId, index, 'src', url); })
@@ -960,38 +1052,37 @@ function Admin() {
                       <label>Project Images (ordered)</label>
                       <div className="image-upload-section">
                         <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
-                          <label className="upload-label">
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp,image/gif"
-                              multiple
-                              onChange={(e) => handleDraftFiles(formIdx, 'images', e)}
-                              style={{display:'none'}}
-                            />
-                            <span className="upload-btn">📁 Select multiple images</span>
-                          </label>
-                          <small style={{color:'#666'}}>Hold Ctrl and click several photos, or Shift to select a range. JPG, PNG, WEBP, up to 25MB each.</small>
-                          {uploadingKey === `draft-${formIdx}` && <small>Uploading… please wait</small>}
+                          <FilePicker
+                            label={uploadingKey === `draft-${formIdx}-images` ? 'Uploading…' : '📁 Select multiple images'}
+                            accept="image/*"
+                            disabled={Boolean(uploadingKey)}
+                            onPick={(files) => handleDraftPicked(formIdx, 'images', files)}
+                          />
+                          <small style={{color:'#666'}}>A 20MB photo is allowed. If it is over 10MB, a high-quality copy is made so the detail stays sharp. The first photo is shown first.</small>
                         </div>
+                        {uploadNote?.key === `draft-${formIdx}-images` && (
+                          <p className={uploadNote.isError ? 'upload-error' : 'upload-status'}>{uploadNote.text}</p>
+                        )}
                         {(np.images || []).map((img, idx) => (
                           <div key={idx} className="upload-options" style={{alignItems:'center', gap:10, marginBottom:10, border:'1px dashed #e0e0e0', padding:8, borderRadius:6}}>
-                            <input type="number" min={1} value={img.order ?? idx+1} onChange={(e)=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, order: Number(e.target.value)}: m) }): f))} style={{width:70}} aria-label="Order" />
+                            <strong style={{width:28}}>{idx + 1}</strong>
+                            {img.src ? <img src={img.src} alt="" style={{width:72, height:54, objectFit:'cover', borderRadius:4}} /> : null}
                             <label className="upload-label">
                               <input type="file" accept="image/*" onChange={(e)=>{
                                 const file = e.target.files[0];
                                 if (!file) return;
                                 if (!file.type.startsWith('image/')) { alert('Please upload an image (jpg, png, webp).'); return; }
-                                if (file.size > 25 * 1024 * 1024) { alert('Image too large. Max 25MB.'); return; }
+                                if (file.size > 40 * 1024 * 1024) { alert('Image too large. Max 40MB. A 20MB photo is reduced automatically.'); return; }
                                 uploadImageToCloudinary(file)
                                   .then(url => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, src: url}: m) }): f)))
                                   .catch(() => { const reader = new FileReader(); reader.onloadend = () => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, src: reader.result}: m) }): f)); reader.readAsDataURL(file); });
                               }} style={{display:'none'}} />
                               <span className="upload-btn">📁 Upload Image</span>
                             </label>
-                            <small style={{color:'#666'}}>Accepted: JPG, PNG, WEBP (≤25MB)</small>
+                            <small style={{color:'#666'}}>JPG, PNG, WEBP. Large photos keep high quality.</small>
                             <input type="url" className="url-input" style={{flex:1}} placeholder="Paste image URL" value={img.src || ''} onChange={(e)=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, src: e.target.value}: m) }): f))} />
-                            <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx-1? f.images[idx]: k===idx? f.images[idx-1]: m) }): f))} disabled={idx===0}>↑</button>
-                            <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx+1? f.images[idx]: k===idx? f.images[idx+1]: m) }): f))} disabled={idx===(np.images.length-1)}>↓</button>
+                            <button type="button" className="btn-delete" onClick={() => moveDraftMedia(formIdx, 'images', idx, -1)} disabled={idx===0}>Up</button>
+                            <button type="button" className="btn-delete" onClick={() => moveDraftMedia(formIdx, 'images', idx, 1)} disabled={idx===(np.images.length-1)}>Down</button>
                             <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.filter((_,k)=> k!==idx) }): f))}>✕</button>
                           </div>
                         ))}
@@ -1004,23 +1095,25 @@ function Admin() {
                       <label>Project Video</label>
                       <div className="image-upload-section">
                         <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
-                          <label className="upload-label">
-                            <input
-                              type="file"
-                              accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
-                              multiple
-                              onChange={(e) => handleDraftFiles(formIdx, 'videos', e)}
-                              style={{display:'none'}}
-                            />
-                            <span className="upload-btn">🎬 Upload video</span>
-                          </label>
-                          <small style={{color:'#666'}}>MP4, WEBM, or MOV, up to 100MB each.</small>
+                          <FilePicker
+                            label={uploadingKey === `draft-${formIdx}-videos` ? 'Uploading…' : '🎬 Upload video'}
+                            accept="video/*"
+                            disabled={Boolean(uploadingKey)}
+                            onPick={(files) => handleDraftPicked(formIdx, 'videos', files)}
+                          />
+                          <small style={{color:'#666'}}>You can select more than one video. Use Up and Down to set the order. MP4, WEBM, or MOV, up to 100MB each.</small>
                         </div>
+                        {uploadNote?.key === `draft-${formIdx}-videos` && (
+                          <p className={uploadNote.isError ? 'upload-error' : 'upload-status'}>{uploadNote.text}</p>
+                        )}
                         {(np.videos || []).map((vid, idx) => (
                           <div key={idx} className="upload-options" style={{alignItems:'center', gap:10, marginBottom:10, border:'1px dashed #e0e0e0', padding:8, borderRadius:6}}>
+                            <strong style={{width:28}}>{idx + 1}</strong>
                             {vid.src ? <video src={vid.src} controls style={{width:160, height:90, objectFit:'cover', borderRadius:4}} /> : null}
                             <input type="url" className="url-input" style={{flex:1}} placeholder="Video URL" value={vid.src || ''} onChange={(e)=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, videos: f.videos.map((m,k)=> k===idx? {...m, src: e.target.value}: m) }): f))} />
-                            <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, videos: (f.videos||[]).filter((_,k)=> k!==idx).map((m,k)=> ({...m, order: k+1})) }): f))}>✕</button>
+                            <button type="button" className="btn-delete" onClick={() => moveDraftMedia(formIdx, 'videos', idx, -1)} disabled={idx===0}>Up</button>
+                            <button type="button" className="btn-delete" onClick={() => moveDraftMedia(formIdx, 'videos', idx, 1)} disabled={idx===((np.videos || []).length-1)}>Down</button>
+                            <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, videos: sortAndNormalize((f.videos||[]).filter((_,k)=> k!==idx)) }): f))}>✕</button>
                           </div>
                         ))}
                       </div>
@@ -1128,19 +1221,17 @@ function Admin() {
                           <label>Project Images (ordered)</label>
                           <div className="image-upload-section">
                             <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
-                              <label className="upload-label">
-                                <input
-                                  type="file"
-                                  accept="image/jpeg,image/png,image/webp,image/gif"
-                                  multiple
-                                  onChange={(e) => handleExistingProjectFiles(project.id, 'images', e)}
-                                  style={{ display: 'none' }}
-                                />
-                                <span className="upload-btn">📁 Select multiple images</span>
-                              </label>
-                              <small style={{color:'#666'}}>Hold Ctrl and click several photos. JPG, PNG, WEBP, up to 25MB each.</small>
-                              {uploadingKey === `project-${project.id}` && <small>Uploading… please wait</small>}
+                              <FilePicker
+                                label={uploadingKey === `project-${project.id}-images` ? 'Uploading…' : '📁 Select multiple images'}
+                                accept="image/*"
+                                disabled={Boolean(uploadingKey)}
+                                onPick={(files) => handleExistingPicked(project.id, 'images', files)}
+                              />
+                              <small style={{color:'#666'}}>A 20MB photo is allowed. If it is over 10MB, a high-quality copy is made so the detail stays sharp.</small>
                             </div>
+                            {uploadNote?.key === `project-${project.id}-images` && (
+                              <p className={uploadNote.isError ? 'upload-error' : 'upload-status'}>{uploadNote.text}</p>
+                            )}
                             {(project.images || []).map((img, idx) => (
                               <div
                                 key={idx}
@@ -1151,14 +1242,10 @@ function Admin() {
                                 onDragOver={handleImageDragOver}
                                 onDrop={() => handleImageDrop(project.id, idx)}
                               >
-                                <input
-                                  type="number"
-                                  value={typeof img === 'string' ? (idx + 1) : (img.order ?? idx + 1)}
-                                  onChange={(e) => updateProjectImage(project.id, idx, 'order', e.target.value)}
-                                  style={{ width: 70 }}
-                                  min={1}
-                                  aria-label="Order"
-                                />
+                                <strong style={{ width: 28 }}>{idx + 1}</strong>
+                                {(typeof img === 'string' ? img : img.src) ? (
+                                  <img src={typeof img === 'string' ? img : img.src} alt="" style={{ width: 72, height: 54, objectFit: 'cover', borderRadius: 4 }} />
+                                ) : null}
                                 <label className="upload-label">
                                   <input
                                     type="file"
@@ -1168,7 +1255,7 @@ function Admin() {
                                   />
                                   <span className="upload-btn">📁 Upload Image</span>
                                 </label>
-                                <small style={{color:'#666'}}>Accepted: JPG, PNG, WEBP (≤25MB)</small>
+                                <small style={{color:'#666'}}>JPG, PNG, WEBP. Large photos keep high quality.</small>
                                 <input
                                   type="url"
                                   value={typeof img === 'string' ? img : (img.src || '')}
@@ -1177,8 +1264,8 @@ function Admin() {
                                   className="url-input"
                                   style={{flex: 1}}
                                 />
-                                <button type="button" className="btn-delete" onClick={() => moveProjectImage(project.id, idx, -1)} disabled={idx===0}>↑</button>
-                                <button type="button" className="btn-delete" onClick={() => moveProjectImage(project.id, idx, 1)} disabled={idx===(project.images.length-1)}>↓</button>
+                                <button type="button" className="btn-delete" onClick={() => moveExistingMedia(project.id, 'images', idx, -1)} disabled={idx===0}>Up</button>
+                                <button type="button" className="btn-delete" onClick={() => moveExistingMedia(project.id, 'images', idx, 1)} disabled={idx===(project.images.length-1)}>Down</button>
                                 <button type="button" className="btn-delete" onClick={() => removeProjectImage(project.id, idx)}>✕</button>
                               </div>
                             ))}
@@ -1189,20 +1276,20 @@ function Admin() {
                           <label style={{marginTop: 16, display: 'block'}}>Project Video</label>
                           <div className="image-upload-section">
                             <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
-                              <label className="upload-label">
-                                <input
-                                  type="file"
-                                  accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
-                                  multiple
-                                  onChange={(e) => handleExistingProjectFiles(project.id, 'videos', e)}
-                                  style={{ display: 'none' }}
-                                />
-                                <span className="upload-btn">🎬 Upload video</span>
-                              </label>
-                              <small style={{color:'#666'}}>MP4, WEBM, or MOV, up to 100MB each.</small>
+                              <FilePicker
+                                label={uploadingKey === `project-${project.id}-videos` ? 'Uploading…' : '🎬 Upload video'}
+                                accept="video/*"
+                                disabled={Boolean(uploadingKey)}
+                                onPick={(files) => handleExistingPicked(project.id, 'videos', files)}
+                              />
+                              <small style={{color:'#666'}}>You can select more than one video. Use Up and Down to set the order. MP4, WEBM, or MOV, up to 100MB each.</small>
                             </div>
+                            {uploadNote?.key === `project-${project.id}-videos` && (
+                              <p className={uploadNote.isError ? 'upload-error' : 'upload-status'}>{uploadNote.text}</p>
+                            )}
                             {(project.videos || []).map((vid, idx) => (
                               <div key={idx} className="upload-options" style={{alignItems:'center', gap:10, marginBottom:10, border:'1px dashed #e0e0e0', padding:8, borderRadius:6}}>
+                                <strong style={{ width: 28 }}>{idx + 1}</strong>
                                 {vid.src ? <video src={vid.src} controls style={{width:160, height:90, objectFit:'cover', borderRadius:4}} /> : null}
                                 <input
                                   type="url"
@@ -1223,6 +1310,8 @@ function Admin() {
                                   className="url-input"
                                   style={{flex: 1}}
                                 />
+                                <button type="button" className="btn-delete" onClick={() => moveExistingMedia(project.id, 'videos', idx, -1)} disabled={idx===0}>Up</button>
+                                <button type="button" className="btn-delete" onClick={() => moveExistingMedia(project.id, 'videos', idx, 1)} disabled={idx===((project.videos || []).length - 1)}>Down</button>
                                 <button type="button" className="btn-delete" onClick={() => removeProjectVideo(project.id, idx)}>✕</button>
                               </div>
                             ))}

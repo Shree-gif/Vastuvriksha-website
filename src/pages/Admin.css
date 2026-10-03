@@ -347,6 +347,51 @@
   box-shadow: var(--shadow-hover);
 }
 
+button.upload-btn {
+  border: none;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.file-picker {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+}
+
+.file-picker.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.form-field .file-picker input[type="file"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 100px;
+}
+
+.upload-status,
+.upload-error {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+}
+
+.upload-status {
+  color: #2e7d32;
+}
+
+.upload-error {
+  color: #b42318;
+}
+
 .upload-hint {
   font-size: 0.85rem;
   color: var(--text-light);
