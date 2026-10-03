@@ -4,6 +4,8 @@ import { db } from '../utils/firebase';
 import { doc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { initializeContent, saveContent, resetContent } from '../utils/storage';
 import { PROJECT_CATEGORIES } from '../data/projectCategories';
+import { nextTopOrder, reorderProjectList, sortProjects } from '../utils/projectOrder';
+import { appendGalleryItems, applyGalleryOrder, combinedGallery, moveGalleryItem, removeGalleryItem, updateGallerySrc } from '../utils/galleryOrder';
 import './Admin.css';
 
 function isImageFile(file) {
@@ -42,8 +44,7 @@ function moveInList(list, index, dir) {
 function withOrderedProjects(projects) {
   return (projects || []).map(project => ({
     ...project,
-    images: sortAndNormalize(project.images),
-    videos: sortAndNormalize(project.videos)
+    ...applyGalleryOrder(combinedGallery(project.images, project.videos))
   }));
 }
 
@@ -59,6 +60,91 @@ function shortUploadError(err) {
     }
   }
   return raw.replace(/^Cloudinary upload failed:\s*\d+\s*/, '').slice(0, 180) || 'could not be uploaded';
+}
+
+function PositionField({ index, total, onMove }) {
+  const [value, setValue] = useState(String(index + 1));
+  useEffect(() => setValue(String(index + 1)), [index, total]);
+  const commit = () => {
+    const next = Number(value);
+    if (!Number.isFinite(next)) {
+      setValue(String(index + 1));
+      return;
+    }
+    const target = Math.min(total, Math.max(1, Math.round(next))) - 1;
+    if (target !== index) onMove(index, target);
+    else setValue(String(index + 1));
+  };
+  return (
+    <input
+      type="number"
+      min={1}
+      max={total}
+      value={value}
+      aria-label="Position in the gallery"
+      className="gallery-position"
+      onClick={(event) => event.stopPropagation()}
+      onChange={(event) => setValue(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+    />
+  );
+}
+
+function GallerySequence({ items, onMove, onRemove, onSrc, onProjectDrop }) {
+  const dragFrom = useRef(null);
+  return items.map((item, index) => (
+    <div
+      key={`${item.kind}-${item.order}-${index}`}
+      className="upload-options gallery-row"
+      draggable
+      onDragStart={(event) => {
+        event.stopPropagation();
+        dragFrom.current = index;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', 'gallery');
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const token = event.dataTransfer.getData('text/plain');
+        if (token && token !== 'gallery') {
+          if (onProjectDrop) onProjectDrop(token);
+          return;
+        }
+        const from = dragFrom.current;
+        dragFrom.current = null;
+        if (from == null || from === index) return;
+        onMove(from, index);
+      }}
+    >
+      <PositionField index={index} total={items.length} onMove={onMove} />
+      <span className="gallery-kind">{item.kind === 'video' ? 'Video' : 'Photo'}</span>
+      {item.src && item.kind === 'video' ? (
+        <video src={item.src} style={{ width: 120, height: 68, objectFit: 'cover', borderRadius: 4 }} />
+      ) : null}
+      {item.src && item.kind !== 'video' ? (
+        <img src={item.src} alt="" style={{ width: 72, height: 54, objectFit: 'cover', borderRadius: 4 }} />
+      ) : null}
+      <input
+        type="url"
+        className="url-input"
+        style={{ flex: 1 }}
+        placeholder={item.kind === 'video' ? 'Video URL' : 'Paste image URL'}
+        value={item.src || ''}
+        onChange={(event) => onSrc(index, event.target.value)}
+      />
+      <button type="button" className="btn-delete" onClick={() => onMove(index, index - 1)} disabled={index === 0}>Up</button>
+      <button type="button" className="btn-delete" onClick={() => onMove(index, index + 1)} disabled={index === items.length - 1}>Down</button>
+      <button type="button" className="btn-delete" onClick={() => onRemove(index)}>✕</button>
+    </div>
+  ));
 }
 
 function FilePicker({ label, accept, disabled, onPick }) {
@@ -87,6 +173,8 @@ function Admin() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const dragRef = useRef({ projectId: null, index: null });
+  const projectDragId = useRef(null);
+  const [dragOverId, setDragOverId] = useState(null);
   const [lastCreatedProjectId, setLastCreatedProjectId] = useState(null);
   const createBlankDraft = () => ({
     tempId: Date.now() + Math.floor(Math.random() * 1000),
@@ -280,7 +368,8 @@ function Admin() {
       status: 'completed',
       designScope: '',
       images: [],
-      videos: []
+      videos: [],
+      displayOrder: nextTopOrder(content.projects)
     };
     setContent({
       ...content,
@@ -449,8 +538,8 @@ function Admin() {
   };
 
   const runUploads = async (key, files, kind, onUrl) => {
-    const max = kind === 'video' ? 100 * 1024 * 1024 : 40 * 1024 * 1024;
-    const limitLabel = kind === 'video' ? '100MB' : '40MB';
+    const max = kind === 'video' ? 500 * 1024 * 1024 : 40 * 1024 * 1024;
+    const limitLabel = kind === 'video' ? '500MB' : '40MB';
     const errors = [];
     let done = 0;
     setUploadingKey(key);
@@ -467,7 +556,7 @@ function Admin() {
           continue;
         }
         try {
-          if (kind === 'image' && file.size > 9.5 * 1024 * 1024) {
+          if ((kind === 'image' && file.size > 9.5 * 1024 * 1024) || (kind === 'video' && file.size > 95 * 1024 * 1024)) {
             setUploadNote({ key, text: `Preparing a high-quality copy of ${file.name}…`, isError: false });
           }
           const url = await uploadImageToCloudinary(file);
@@ -492,9 +581,7 @@ function Admin() {
     if (!urls.length) return;
     setNewProjectForms(fs => fs.map((f, i) => {
       if (i !== formIdx) return f;
-      const current = Array.isArray(f[field]) ? f[field] : [];
-      const added = urls.map((src, n) => ({ src, order: current.length + n + 1 }));
-      return { ...f, [field]: [...current, ...added] };
+      return { ...f, ...appendGalleryItems(f.images, f.videos, field === 'videos' ? 'video' : 'image', urls) };
     }));
   };
 
@@ -504,33 +591,48 @@ function Admin() {
     });
   };
 
+  const setProjectGallery = (projectId, gallery) => {
+    if (!gallery) return;
+    setContent(prev => ({
+      ...prev,
+      projects: (prev.projects || []).map(p => {
+        if (p.id !== projectId) return p;
+        setDoc(doc(db, 'projects', String(p.id)), { images: gallery.images, videos: gallery.videos }, { merge: true }).catch(() => {});
+        return { ...p, images: gallery.images, videos: gallery.videos };
+      })
+    }));
+  };
+
   const appendProjectMedia = (projectId, field, urls) => {
     if (!urls.length) return;
     setContent(prev => ({
       ...prev,
       projects: (prev.projects || []).map(p => {
         if (p.id !== projectId) return p;
-        const next = sortAndNormalize([...(p[field] || []), ...urls.map(src => ({ src }))]);
-        setDoc(doc(db, 'projects', String(p.id)), { [field]: next }, { merge: true }).catch(() => {});
-        return { ...p, [field]: next };
+        const gallery = appendGalleryItems(p.images, p.videos, field === 'videos' ? 'video' : 'image', urls);
+        setDoc(doc(db, 'projects', String(p.id)), { images: gallery.images, videos: gallery.videos }, { merge: true }).catch(() => {});
+        return { ...p, ...gallery };
       })
     }));
   };
 
-  const moveDraftMedia = (formIdx, field, index, dir) => {
-    setNewProjectForms(fs => fs.map((f, i) => (
-      i === formIdx ? { ...f, [field]: moveInList(f[field], index, dir) } : f
-    )));
+  const moveDraftGallery = (formIdx, from, to) => {
+    setNewProjectForms(fs => fs.map((f, i) => {
+      if (i !== formIdx) return f;
+      const gallery = moveGalleryItem(f.images, f.videos, from, to);
+      return gallery ? { ...f, ...gallery } : f;
+    }));
   };
 
-  const moveExistingMedia = (projectId, field, index, dir) => {
+  const moveExistingGallery = (projectId, from, to) => {
     setContent(prev => ({
       ...prev,
       projects: (prev.projects || []).map(p => {
         if (p.id !== projectId) return p;
-        const next = moveInList(p[field], index, dir);
-        setDoc(doc(db, 'projects', String(p.id)), { [field]: next }, { merge: true }).catch(() => {});
-        return { ...p, [field]: next };
+        const gallery = moveGalleryItem(p.images, p.videos, from, to);
+        if (!gallery) return p;
+        setDoc(doc(db, 'projects', String(p.id)), { images: gallery.images, videos: gallery.videos }, { merge: true }).catch(() => {});
+        return { ...p, ...gallery };
       })
     }));
   };
@@ -572,11 +674,8 @@ function Admin() {
   };
 
   const handleImageDragStart = (projectId, index) => {
+    projectDragId.current = null;
     dragRef.current = { projectId, index };
-  };
-
-  const handleImageDragOver = (e) => {
-    e.preventDefault();
   };
 
   const handleImageDrop = (projectId, dropIndex) => {
@@ -594,6 +693,26 @@ function Admin() {
       return copy;
     });
     dragRef.current = { projectId: null, index: null };
+  };
+
+  const handleProjectDrop = (toId, fromId = projectDragId.current) => {
+    projectDragId.current = null;
+    setDragOverId(null);
+    if (fromId == null || fromId === '' || String(fromId) === String(toId)) return;
+    const projects = reorderProjectList(content.projects, fromId, toId);
+    if (!projects) return;
+    setContent(prev => ({ ...prev, projects }));
+    Promise.all(projects.map((project) => (
+      setDoc(doc(db, 'projects', String(project.id)), { displayOrder: project.displayOrder }, { merge: true })
+    )))
+      .then(() => {
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus(''), 2000);
+      })
+      .catch(() => {
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus(''), 3000);
+      });
   };
 
   const handleImageUpload = (id, event) => {
@@ -1049,7 +1168,7 @@ function Admin() {
                       <textarea rows="3" value={np.designScope || ''} onChange={(e) => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? {...f, designScope: e.target.value}: f))} placeholder="What this project covers, for example living room, kitchen, and furniture layout" />
                     </div>
                     <div className="form-field full-width">
-                      <label>Project Images (ordered)</label>
+                      <label>Photos and videos, in the order visitors see</label>
                       <div className="image-upload-section">
                         <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
                           <FilePicker
@@ -1058,64 +1177,31 @@ function Admin() {
                             disabled={Boolean(uploadingKey)}
                             onPick={(files) => handleDraftPicked(formIdx, 'images', files)}
                           />
-                          <small style={{color:'#666'}}>A 20MB photo is allowed. If it is over 10MB, a high-quality copy is made so the detail stays sharp. The first photo is shown first.</small>
-                        </div>
-                        {uploadNote?.key === `draft-${formIdx}-images` && (
-                          <p className={uploadNote.isError ? 'upload-error' : 'upload-status'}>{uploadNote.text}</p>
-                        )}
-                        {(np.images || []).map((img, idx) => (
-                          <div key={idx} className="upload-options" style={{alignItems:'center', gap:10, marginBottom:10, border:'1px dashed #e0e0e0', padding:8, borderRadius:6}}>
-                            <strong style={{width:28}}>{idx + 1}</strong>
-                            {img.src ? <img src={img.src} alt="" style={{width:72, height:54, objectFit:'cover', borderRadius:4}} /> : null}
-                            <label className="upload-label">
-                              <input type="file" accept="image/*" onChange={(e)=>{
-                                const file = e.target.files[0];
-                                if (!file) return;
-                                if (!file.type.startsWith('image/')) { alert('Please upload an image (jpg, png, webp).'); return; }
-                                if (file.size > 40 * 1024 * 1024) { alert('Image too large. Max 40MB. A 20MB photo is reduced automatically.'); return; }
-                                uploadImageToCloudinary(file)
-                                  .then(url => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, src: url}: m) }): f)))
-                                  .catch(() => { const reader = new FileReader(); reader.onloadend = () => setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, src: reader.result}: m) }): f)); reader.readAsDataURL(file); });
-                              }} style={{display:'none'}} />
-                              <span className="upload-btn">📁 Upload Image</span>
-                            </label>
-                            <small style={{color:'#666'}}>JPG, PNG, WEBP. Large photos keep high quality.</small>
-                            <input type="url" className="url-input" style={{flex:1}} placeholder="Paste image URL" value={img.src || ''} onChange={(e)=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.map((m,k)=> k===idx? {...m, src: e.target.value}: m) }): f))} />
-                            <button type="button" className="btn-delete" onClick={() => moveDraftMedia(formIdx, 'images', idx, -1)} disabled={idx===0}>Up</button>
-                            <button type="button" className="btn-delete" onClick={() => moveDraftMedia(formIdx, 'images', idx, 1)} disabled={idx===(np.images.length-1)}>Down</button>
-                            <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: f.images.filter((_,k)=> k!==idx) }): f))}>✕</button>
-                          </div>
-                        ))}
-                        <div style={{marginTop:8}}>
-                          <button type="button" className="btn btn-primary" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, images: [...(f.images||[]), { src:'', order: (f.images?.length||0)+1 }] }): f))}>+ Add Image</button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="form-field full-width">
-                      <label>Project Video</label>
-                      <div className="image-upload-section">
-                        <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
                           <FilePicker
                             label={uploadingKey === `draft-${formIdx}-videos` ? 'Uploading…' : '🎬 Upload video'}
                             accept="video/*"
                             disabled={Boolean(uploadingKey)}
                             onPick={(files) => handleDraftPicked(formIdx, 'videos', files)}
                           />
-                          <small style={{color:'#666'}}>You can select more than one video. Use Up and Down to set the order. MP4, WEBM, or MOV, up to 100MB each.</small>
                         </div>
-                        {uploadNote?.key === `draft-${formIdx}-videos` && (
+                        <small style={{color:'#666'}}>Drag a row, use Up and Down, or type a number. A video can sit between photos, for example photo, video, then the remaining photos.</small>
+                        {(uploadNote?.key === `draft-${formIdx}-images` || uploadNote?.key === `draft-${formIdx}-videos`) && (
                           <p className={uploadNote.isError ? 'upload-error' : 'upload-status'}>{uploadNote.text}</p>
                         )}
-                        {(np.videos || []).map((vid, idx) => (
-                          <div key={idx} className="upload-options" style={{alignItems:'center', gap:10, marginBottom:10, border:'1px dashed #e0e0e0', padding:8, borderRadius:6}}>
-                            <strong style={{width:28}}>{idx + 1}</strong>
-                            {vid.src ? <video src={vid.src} controls style={{width:160, height:90, objectFit:'cover', borderRadius:4}} /> : null}
-                            <input type="url" className="url-input" style={{flex:1}} placeholder="Video URL" value={vid.src || ''} onChange={(e)=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, videos: f.videos.map((m,k)=> k===idx? {...m, src: e.target.value}: m) }): f))} />
-                            <button type="button" className="btn-delete" onClick={() => moveDraftMedia(formIdx, 'videos', idx, -1)} disabled={idx===0}>Up</button>
-                            <button type="button" className="btn-delete" onClick={() => moveDraftMedia(formIdx, 'videos', idx, 1)} disabled={idx===((np.videos || []).length-1)}>Down</button>
-                            <button type="button" className="btn-delete" onClick={()=> setNewProjectForms(fs => fs.map((f,i)=> i===formIdx? ({...f, videos: sortAndNormalize((f.videos||[]).filter((_,k)=> k!==idx)) }): f))}>✕</button>
-                          </div>
-                        ))}
+                        <GallerySequence
+                          items={combinedGallery(np.images, np.videos)}
+                          onMove={(from, to) => moveDraftGallery(formIdx, from, to)}
+                          onRemove={(index) => setNewProjectForms(fs => fs.map((f, i) => {
+                            if (i !== formIdx) return f;
+                            const gallery = removeGalleryItem(f.images, f.videos, index);
+                            return gallery ? { ...f, ...gallery } : f;
+                          }))}
+                          onSrc={(index, value) => setNewProjectForms(fs => fs.map((f, i) => {
+                            if (i !== formIdx) return f;
+                            const gallery = updateGallerySrc(f.images, f.videos, index, value);
+                            return gallery ? { ...f, ...gallery } : f;
+                          }))}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1132,8 +1218,9 @@ function Admin() {
                         location: npv.location,
                         year: npv.year,
                         status: npv.status,
-                        images: (npv.images || []).filter(im => im && im.src).map((im, i) => ({ src: im.src, order: im.order ?? (i + 1) })),
-                        videos: (npv.videos || []).filter(im => im && im.src).map((im, i) => ({ src: im.src, order: im.order ?? (i + 1) }))
+                        images: applyGalleryOrder(combinedGallery(npv.images, npv.videos).filter(item => item.src)).images,
+                        videos: applyGalleryOrder(combinedGallery(npv.images, npv.videos).filter(item => item.src)).videos,
+                        displayOrder: nextTopOrder(content.projects)
                       };
                       const updated = { ...content, projects: [...(content.projects || []), projectToAdd] };
                       setContent(updated);
@@ -1154,12 +1241,46 @@ function Admin() {
                 </div>
               ))}
 
+              <p className="reorder-note">Drag a project by the handle to change the order visitors see. The new order is saved when you drop it.</p>
               <div className="items-list">
-                {[...(content.projects || [])]
-                  .slice()
-                  .sort((a,b) => (Number(b.id) || 0) - (Number(a.id) || 0))
-                  .map(project => (
-                  <div key={project.id} className="item-card">
+                {sortProjects(content.projects).map((project, projectIndex) => (
+                  <div
+                    key={project.id}
+                    className={`item-card ${dragOverId === project.id ? 'is-drop-target' : ''}`}
+                    onDragOver={(e) => {
+                      if (projectDragId.current == null) return;
+                      e.preventDefault();
+                      if (dragOverId !== project.id) setDragOverId(project.id);
+                    }}
+                    onDrop={(e) => {
+                      const fromId = e.dataTransfer.getData('text/plain');
+                      if (!fromId || fromId === 'gallery') return;
+                      e.preventDefault();
+                      handleProjectDrop(project.id, fromId);
+                    }}
+                  >
+                    <div className="project-card-toolbar">
+                      <div
+                        className="project-drag-handle"
+                        draggable
+                        title="Drag to reorder"
+                        onDragStart={(e) => {
+                          e.stopPropagation();
+                          projectDragId.current = project.id;
+                          dragRef.current = { projectId: null, index: null };
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('text/plain', String(project.id));
+                        }}
+                        onDragEnd={() => {
+                          projectDragId.current = null;
+                          setDragOverId(null);
+                        }}
+                      >
+                        <span aria-hidden="true">⋮⋮</span>
+                        Drag to reorder
+                      </div>
+                      <span className="project-order-label">Position {projectIndex + 1}</span>
+                    </div>
                     <div className="form-grid">
                       <div className="form-field">
                         <label>Project Title</label>
@@ -1214,11 +1335,11 @@ function Admin() {
                         <button type="button" className="btn btn-secondary" onClick={()=> setEditingProjectIds(prev => ({...prev, [project.id]: !prev[project.id]}))}>
                           {editingProjectIds[project.id] ? 'Hide photos and video' : 'Edit photos and video'}
                         </button>
-                        <span style={{color:'#666'}}>Add several photos at once, or upload a video</span>
+                        <span style={{color:'#666'}}>Put a video between photos by dragging or numbering them together</span>
                       </div>
                       {editingProjectIds[project.id] && (
                         <div className="form-field full-width">
-                          <label>Project Images (ordered)</label>
+                          <label>Photos and videos, in the order visitors see</label>
                           <div className="image-upload-section">
                             <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
                               <FilePicker
@@ -1227,94 +1348,24 @@ function Admin() {
                                 disabled={Boolean(uploadingKey)}
                                 onPick={(files) => handleExistingPicked(project.id, 'images', files)}
                               />
-                              <small style={{color:'#666'}}>A 20MB photo is allowed. If it is over 10MB, a high-quality copy is made so the detail stays sharp.</small>
-                            </div>
-                            {uploadNote?.key === `project-${project.id}-images` && (
-                              <p className={uploadNote.isError ? 'upload-error' : 'upload-status'}>{uploadNote.text}</p>
-                            )}
-                            {(project.images || []).map((img, idx) => (
-                              <div
-                                key={idx}
-                                className="upload-options"
-                                style={{alignItems: 'center', gap: 10, marginBottom: 10, border: '1px dashed #e0e0e0', padding: 8, borderRadius: 6}}
-                                draggable
-                                onDragStart={() => handleImageDragStart(project.id, idx)}
-                                onDragOver={handleImageDragOver}
-                                onDrop={() => handleImageDrop(project.id, idx)}
-                              >
-                                <strong style={{ width: 28 }}>{idx + 1}</strong>
-                                {(typeof img === 'string' ? img : img.src) ? (
-                                  <img src={typeof img === 'string' ? img : img.src} alt="" style={{ width: 72, height: 54, objectFit: 'cover', borderRadius: 4 }} />
-                                ) : null}
-                                <label className="upload-label">
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => handleProjectImageUpload(project.id, idx, e)}
-                                    style={{ display: 'none' }}
-                                  />
-                                  <span className="upload-btn">📁 Upload Image</span>
-                                </label>
-                                <small style={{color:'#666'}}>JPG, PNG, WEBP. Large photos keep high quality.</small>
-                                <input
-                                  type="url"
-                                  value={typeof img === 'string' ? img : (img.src || '')}
-                                  onChange={(e) => updateProjectImage(project.id, idx, 'src', e.target.value)}
-                                  placeholder="Paste image URL"
-                                  className="url-input"
-                                  style={{flex: 1}}
-                                />
-                                <button type="button" className="btn-delete" onClick={() => moveExistingMedia(project.id, 'images', idx, -1)} disabled={idx===0}>Up</button>
-                                <button type="button" className="btn-delete" onClick={() => moveExistingMedia(project.id, 'images', idx, 1)} disabled={idx===(project.images.length-1)}>Down</button>
-                                <button type="button" className="btn-delete" onClick={() => removeProjectImage(project.id, idx)}>✕</button>
-                              </div>
-                            ))}
-                            <div style={{marginTop: 8}}>
-                              <button type="button" className="btn btn-primary" onClick={() => addProjectImage(project.id)}>+ Add Image</button>
-                            </div>
-                          </div>
-                          <label style={{marginTop: 16, display: 'block'}}>Project Video</label>
-                          <div className="image-upload-section">
-                            <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12}}>
                               <FilePicker
                                 label={uploadingKey === `project-${project.id}-videos` ? 'Uploading…' : '🎬 Upload video'}
                                 accept="video/*"
                                 disabled={Boolean(uploadingKey)}
                                 onPick={(files) => handleExistingPicked(project.id, 'videos', files)}
                               />
-                              <small style={{color:'#666'}}>You can select more than one video. Use Up and Down to set the order. MP4, WEBM, or MOV, up to 100MB each.</small>
                             </div>
-                            {uploadNote?.key === `project-${project.id}-videos` && (
+                            <small style={{color:'#666'}}>Drag a row, use Up and Down, or type a number. A video can sit between photos. The order is saved when you drop it.</small>
+                            {(uploadNote?.key === `project-${project.id}-images` || uploadNote?.key === `project-${project.id}-videos`) && (
                               <p className={uploadNote.isError ? 'upload-error' : 'upload-status'}>{uploadNote.text}</p>
                             )}
-                            {(project.videos || []).map((vid, idx) => (
-                              <div key={idx} className="upload-options" style={{alignItems:'center', gap:10, marginBottom:10, border:'1px dashed #e0e0e0', padding:8, borderRadius:6}}>
-                                <strong style={{ width: 28 }}>{idx + 1}</strong>
-                                {vid.src ? <video src={vid.src} controls style={{width:160, height:90, objectFit:'cover', borderRadius:4}} /> : null}
-                                <input
-                                  type="url"
-                                  value={vid.src || ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value;
-                                    setContent(prev => ({
-                                      ...prev,
-                                      projects: prev.projects.map(p => {
-                                        if (p.id !== project.id) return p;
-                                        const videos = [...(p.videos || [])];
-                                        videos[idx] = { ...(videos[idx] || {}), src: value, order: videos[idx]?.order ?? idx + 1 };
-                                        return { ...p, videos };
-                                      })
-                                    }));
-                                  }}
-                                  placeholder="Video URL"
-                                  className="url-input"
-                                  style={{flex: 1}}
-                                />
-                                <button type="button" className="btn-delete" onClick={() => moveExistingMedia(project.id, 'videos', idx, -1)} disabled={idx===0}>Up</button>
-                                <button type="button" className="btn-delete" onClick={() => moveExistingMedia(project.id, 'videos', idx, 1)} disabled={idx===((project.videos || []).length - 1)}>Down</button>
-                                <button type="button" className="btn-delete" onClick={() => removeProjectVideo(project.id, idx)}>✕</button>
-                              </div>
-                            ))}
+                            <GallerySequence
+                              items={combinedGallery(project.images, project.videos)}
+                              onMove={(from, to) => moveExistingGallery(project.id, from, to)}
+                              onRemove={(index) => setProjectGallery(project.id, removeGalleryItem(project.images, project.videos, index))}
+                              onSrc={(index, value) => setProjectGallery(project.id, updateGallerySrc(project.images, project.videos, index, value))}
+                              onProjectDrop={(fromId) => handleProjectDrop(project.id, fromId)}
+                            />
                           </div>
                         </div>
                       )}

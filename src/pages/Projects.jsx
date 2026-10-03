@@ -1,40 +1,66 @@
 import { useState, useEffect, useRef } from 'react';
 // Load projects from Firestore; fallback to local storage on error
 import { db } from '../utils/firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { compareProjects } from '../utils/projectOrder';
+import { publicMediaList } from '../utils/galleryOrder';
 import { initializeContent } from '../utils/storage';
 import { useLanguage } from '../context/LanguageContext';
 import { PROJECT_CATEGORIES } from '../data/projectCategories';
 import './Projects.css';
-
-function mediaUrl(item) {
-  return typeof item === 'string' ? item : (item?.src || '');
-}
 
 function isVideoUrl(src) {
   if (typeof src !== 'string') return false;
   return /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(src) || src.includes('/video/upload');
 }
 
-function orderedMedia(list) {
-  return (Array.isArray(list) ? list : [])
-    .slice()
-    .sort((a, b) => {
-      const ao = typeof a === 'string' ? 0 : (a.order ?? 0);
-      const bo = typeof b === 'string' ? 0 : (b.order ?? 0);
-      return ao - bo;
-    })
-    .map(mediaUrl)
-    .filter(Boolean);
+function projectMedia(project) {
+  return publicMediaList(project);
 }
 
-function projectMedia(project) {
-  const images = orderedMedia(
-    Array.isArray(project.images) && project.images.length > 0
-      ? project.images
-      : (project.image ? [project.image] : [])
+export function ProjectVideo({ src, className, style, onReady }) {
+  const videoRef = useRef(null);
+  const primedRef = useRef(false);
+  const [playing, setPlaying] = useState(false);
+
+  const startPlayback = (event) => {
+    event.stopPropagation();
+    const video = videoRef.current;
+    if (!video) return;
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => setPlaying(false));
+    }
+  };
+
+  return (
+    <div className={`project-video-frame ${className || ''}`} style={style}>
+      <video
+        ref={videoRef}
+        src={src}
+        playsInline
+        preload="metadata"
+        controls={playing}
+        onClick={(event) => event.stopPropagation()}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        onLoadedData={() => {
+          const video = videoRef.current;
+          if (video && !primedRef.current && video.currentTime === 0 && Number.isFinite(video.duration) && video.duration > 0) {
+            primedRef.current = true;
+            video.currentTime = Math.min(0.1, video.duration / 2);
+          }
+          if (onReady) onReady();
+        }}
+      />
+      {!playing && (
+        <button type="button" className="video-play-btn" aria-label="Play video" onClick={startPlayback}>
+          <span aria-hidden="true" />
+        </button>
+      )}
+    </div>
   );
-  return [...images, ...orderedMedia(project.videos)];
 }
 
 function Projects() {
@@ -52,9 +78,10 @@ function Projects() {
 
   useEffect(() => {
     setLoading(true);
-    const q = query(collection(db, 'projects'), orderBy('id', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.data()?.id ?? doc.id, ...doc.data() }));
+    const unsubscribe = onSnapshot(collection(db, 'projects'), (snapshot) => {
+      const list = snapshot.docs
+        .map(docSnap => ({ id: docSnap.data()?.id ?? docSnap.id, ...docSnap.data() }))
+        .sort(compareProjects);
       setProjects(Array.isArray(list) ? list : []);
       setLoading(false);
     }, (err) => {
@@ -63,7 +90,7 @@ function Projects() {
       initializeContent()
         .then(data => {
           const stored = Array.isArray(data.projects) ? data.projects : [];
-          setProjects(stored);
+          setProjects([...stored].sort(compareProjects));
         })
         .catch(() => setProjects([]))
         .finally(() => setLoading(false));
@@ -167,12 +194,10 @@ function Projects() {
                       const isVideo = isVideoUrl(current);
                       return current ? (
                         isVideo ? (
-                          <video
+                          <ProjectVideo
                             src={current}
-                            controls
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ opacity: imageLoadedMap[imgKey] ? 1 : 0, transition: 'opacity 300ms ease', width: '100%', height: '100%', objectFit: 'contain' }}
-                            onLoadedData={() => setImageLoadedMap(prev => ({ ...prev, [imgKey]: true }))}
+                            style={{ opacity: imageLoadedMap[imgKey] ? 1 : 0, transition: 'opacity 300ms ease' }}
+                            onReady={() => setImageLoadedMap(prev => ({ ...prev, [imgKey]: true }))}
                           />
                         ) : (
                           <img
@@ -308,7 +333,7 @@ function Projects() {
                     <div key={i} className="project-gallery-card">
                       <div className="project-gallery-image" style={{height: 220}}>
                         {isVideoUrl(src) ? (
-                          <video src={src} controls />
+                          <ProjectVideo src={src} />
                         ) : (
                           <img src={src} alt={`${galleryProject.title} ${i+1}`} />
                         )}
